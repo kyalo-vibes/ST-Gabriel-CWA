@@ -1,0 +1,72 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from './components/ui/sonner';
+import { useStore } from './store/useStore';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Layout } from './components/Layout';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { MemberDashboardPage } from './pages/MemberDashboardPage';
+import { MemberProfilePage } from './pages/MemberProfilePage';
+import { MembersPage } from './pages/MembersPage';
+import { MemberDetailPage } from './pages/MemberDetailPage';
+import { ContributionsPage } from './pages/ContributionsPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { useEffect } from 'react';
+
+export default function App() {
+  const theme = useStore((state) => state.theme);
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const user = useStore((state) => state.user);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+  
+  const isAdmin = user?.role === 'Administrator';
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route 
+            path="dashboard" 
+            element={isAdmin ? <DashboardPage /> : <MemberDashboardPage />} 
+          />
+          <Route path="profile" element={<MemberProfilePage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          
+          {/* Admin-only routes */}
+          {isAdmin && (
+            <>
+              <Route path="members" element={<MembersPage />} />
+              <Route path="members/:id" element={<MemberDetailPage />} />
+              <Route path="contributions" element={<ContributionsPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </>
+          )}
+        </Route>
+        {/* Catch-all route for any unmatched paths */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+      </Routes>
+      <Toaster />
+    </BrowserRouter>
+  );
+}
