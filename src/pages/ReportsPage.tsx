@@ -36,7 +36,10 @@ export function ReportsPage() {
   const isAdmin = user?.role === 'Administrator';
 
   const handleDownload = (reportType: string) => {
-    toast.success(`${reportType} report download started`);
+    const originalTitle = document.title;
+    document.title = `CWA St. Gabriel - ${reportType} Report - ${new Date().toLocaleDateString('en-KE')}`;
+    window.print();
+    document.title = originalTitle;
   };
 
   // Colors for charts

@@ -5,17 +5,23 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Separator } from '../components/ui/separator';
-import { User, Mail, Phone, Sun, Moon } from 'lucide-react';
+import { User, Mail, Phone, Sun, Moon, MessageSquare, Loader2, CheckCircle } from 'lucide-react';
+import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner@2.0.3';
 import { useState } from 'react';
 
 export function SettingsPage() {
-  const { user, theme, toggleTheme } = useStore();
+  const { user, theme, toggleTheme, approvedGroups, setApprovedGroups } = useStore();
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: '+254700000000',
   });
+
+  // WhatsApp group registration state
+  const [allGroups, setAllGroups] = useState<{ id: string; name: string }[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +154,95 @@ export function SettingsPage() {
             </div>
             <Switch defaultChecked />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp Groups */}
+      <Card>
+        <CardHeader>
+          <CardTitle>WhatsApp Groups</CardTitle>
+          <CardDescription>Select which groups this system is allowed to send messages to.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Currently approved groups */}
+          {approvedGroups.length > 0 ? (
+            <div className="space-y-1">
+              {approvedGroups.map(g => (
+                <div key={g.id} className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>{g.name}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No groups registered yet.</p>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setLoadingGroups(true);
+              try {
+                const res = await fetch('http://localhost:3001/whatsapp/groups');
+                const data: { id: string; name: string }[] = await res.json();
+                setAllGroups(data);
+                // Pre-check groups that are already approved
+                const approvedIds = new Set(approvedGroups.map(g => g.id));
+                setSelectedGroupIds(approvedIds);
+              } catch {
+                toast.error('Could not connect to WhatsApp. Make sure the backend is running.');
+              } finally {
+                setLoadingGroups(false);
+              }
+            }}
+            disabled={loadingGroups}
+          >
+            {loadingGroups ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <MessageSquare className="h-4 w-4 mr-2" />
+            )}
+            Load Groups from WhatsApp
+          </Button>
+
+          {/* Checkbox list of all groups fetched from the phone */}
+          {allGroups.length > 0 && (
+            <div className="space-y-3">
+              {allGroups.map(g => (
+                <div key={g.id} className="flex items-center gap-3">
+                  <Checkbox
+                    id={`group-${g.id}`}
+                    checked={selectedGroupIds.has(g.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedGroupIds(prev => {
+                        const next = new Set(prev);
+                        if (checked) {
+                          next.add(g.id);
+                        } else {
+                          next.delete(g.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  />
+                  <label htmlFor={`group-${g.id}`} className="text-sm cursor-pointer">
+                    {g.name}
+                  </label>
+                </div>
+              ))}
+
+              <Button
+                className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
+                onClick={() => {
+                  const checked = allGroups.filter(g => selectedGroupIds.has(g.id));
+                  setApprovedGroups(checked);
+                  toast.success('WhatsApp groups saved!');
+                }}
+              >
+                Save Selected Groups
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

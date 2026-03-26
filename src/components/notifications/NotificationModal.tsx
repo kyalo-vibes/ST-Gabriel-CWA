@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Send, Users } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { MessagePreview } from './MessagePreview';
 import { RecipientSummary } from './RecipientSummary';
 import { useStore } from '../../store/useStore';
@@ -17,23 +17,31 @@ interface NotificationModalProps {
 
 const messageTemplates = {
   'Contribution Reminder': 'Dear {name}, this is a friendly reminder to complete your {contributionType} contribution of KES {amount} before {dueDate}. Thank you!',
-  'Event Announcement': 'Dear Members, please note our next C.W.A. meeting is scheduled for {date} at {time}. We look forward to seeing you!',
+  'Event Announcement': 'Dear {name}, a new contribution event has been created: {eventTitle}. Please contribute KES {amount} by {dueDate}. Your timely payment is greatly appreciated. God bless you. — CWA St. Gabriel',
   'General Update': 'Dear {name}, we would like to inform you about an important update regarding our community welfare programs.',
   'Thank You': 'Dear {name}, thank you for your generous contribution of KES {amount} to our {contributionType} fund. God bless you!',
   'Fundraising': 'Dear Members, we are organizing a fundraising event for {purpose}. Your support would be greatly appreciated.'
 };
 
 export function NotificationModal({ open, onOpenChange }: NotificationModalProps) {
-  const { members, addNotification, activeFilters } = useStore();
+  const { members, addNotification, activeFilters, approvedGroups } = useStore();
   const [notificationType, setNotificationType] = useState('Contribution Reminder');
   const [targetGroup, setTargetGroup] = useState('All Members');
   const [contributionType, setContributionType] = useState('');
   const [message, setMessage] = useState(messageTemplates['Contribution Reminder']);
   const [sendMode, setSendMode] = useState<'group' | 'individual'>('group');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   useEffect(() => {
     setMessage(messageTemplates[notificationType as keyof typeof messageTemplates] || '');
   }, [notificationType]);
+
+  // Auto-select first approved group when available
+  useEffect(() => {
+    if (approvedGroups.length > 0 && !selectedGroupId) {
+      setSelectedGroupId(approvedGroups[0].id);
+    }
+  }, [approvedGroups]);
 
   const getFilteredMembers = () => {
     let filtered = members;
@@ -86,7 +94,7 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
         sendMode === 'group'
           ? {
               mode: 'group',
-              groupId: '254708306865-1618479657@g.us', // placeholder - update after first QR scan
+              groupId: selectedGroupId,
               message,
               notificationType,
               targetGroup,
@@ -175,65 +183,92 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
                 onClick={() => setSendMode('group')}
                 className={`px-4 py-2 text-sm ${sendMode === 'group' ? 'bg-[#1C3D5A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
               >
-                Group Message
+                WhatsApp Group
               </button>
               <button
                 type="button"
                 onClick={() => setSendMode('individual')}
                 className={`px-4 py-2 text-sm border-l border-gray-300 ${sendMode === 'individual' ? 'bg-[#1C3D5A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
               >
-                Individual Messages
+                Individual Phones
               </button>
             </div>
             <p className="text-xs text-gray-500">
               {sendMode === 'group'
-                ? 'Sends one message to the WhatsApp group chat.'
-                : 'Sends a personalised message to each member\'s phone. Placeholders like {name} and {balance} will be substituted.'}
+                ? 'Sends one message to the selected WhatsApp group chat.'
+                : 'Sends a personalised message directly to each member\'s phone.'}
             </p>
           </div>
 
-          {/* Target Group */}
-          <div className="space-y-2">
-            <Label htmlFor="group">Target Group</Label>
-            <Select value={targetGroup} onValueChange={setTargetGroup}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Members">All Members</SelectItem>
-                <SelectItem value="Active Members">Active Members</SelectItem>
-                <SelectItem value="Inactive Members">Inactive Members</SelectItem>
-                <SelectItem value="Defaulters">Defaulters (Outstanding Balance)</SelectItem>
-                <SelectItem value="St. Peter">St. Peter</SelectItem>
-                <SelectItem value="St. Paul">St. Paul</SelectItem>
-                <SelectItem value="St. Joseph">St. Joseph</SelectItem>
-                <SelectItem value="St. Mary">St. Mary</SelectItem>
-                <SelectItem value="Custom Filter">Custom Filter (From Members Page)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Contribution Type (conditional) */}
-          {(notificationType === 'Contribution Reminder' || notificationType === 'Thank You') && (
+          {/* WhatsApp Group Selector */}
+          {sendMode === 'group' && (
             <div className="space-y-2">
-              <Label htmlFor="contributionType">Contribution Type (Optional)</Label>
-              <Select value={contributionType} onValueChange={setContributionType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Development">Development</SelectItem>
-                  <SelectItem value="Welfare">Welfare</SelectItem>
-                  <SelectItem value="Project">Project</SelectItem>
-                  <SelectItem value="Monthly Contribution">Monthly Contribution</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>WhatsApp Group</Label>
+              {approvedGroups.length === 0 ? (
+                <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-md p-3">
+                  No WhatsApp groups configured. Go to <strong>Settings &rarr; WhatsApp Groups</strong> to register your groups first.
+                </p>
+              ) : (
+                <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {approvedGroups.map(g => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 
-          {/* Recipient Summary */}
-          <RecipientSummary count={recipients.length} group={targetGroup} />
+          {sendMode === 'individual' && (
+            <>
+              {/* Target Group */}
+              <div className="space-y-2">
+                <Label htmlFor="group">Target Group</Label>
+                <Select value={targetGroup} onValueChange={setTargetGroup}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All Members">All Members</SelectItem>
+                    <SelectItem value="Active Members">Active Members</SelectItem>
+                    <SelectItem value="Inactive Members">Inactive Members</SelectItem>
+                    <SelectItem value="Defaulters">Defaulters (Outstanding Balance)</SelectItem>
+                    <SelectItem value="St. Peter">St. Peter</SelectItem>
+                    <SelectItem value="St. Paul">St. Paul</SelectItem>
+                    <SelectItem value="St. Joseph">St. Joseph</SelectItem>
+                    <SelectItem value="St. Mary">St. Mary</SelectItem>
+                    <SelectItem value="Custom Filter">Custom Filter (From Members Page)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Contribution Type (conditional) */}
+              {(notificationType === 'Contribution Reminder' || notificationType === 'Thank You') && (
+                <div className="space-y-2">
+                  <Label htmlFor="contributionType">Contribution Type (Optional)</Label>
+                  <Select value={contributionType} onValueChange={setContributionType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Development">Development</SelectItem>
+                      <SelectItem value="Welfare">Welfare</SelectItem>
+                      <SelectItem value="Project">Project</SelectItem>
+                      <SelectItem value="Monthly Contribution">Monthly Contribution</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Recipient Summary */}
+              <RecipientSummary count={recipients.length} group={targetGroup} />
+            </>
+          )}
 
           {/* Message Field */}
           <div className="space-y-2">
@@ -246,7 +281,7 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
               placeholder="Enter your message..."
             />
             <p className="text-xs text-gray-500">
-              Available placeholders: {'{name}'}, {'{contributionType}'}, {'{amount}'}, {'{dueDate}'}, {'{balance}'}, {'{date}'}, {'{time}'}
+              Available placeholders: {'{name}'}, {'{contributionType}'}, {'{amount}'}, {'{dueDate}'}, {'{balance}'}, {'{date}'}, {'{time}'}, {'{eventTitle}'}
             </p>
           </div>
 
@@ -264,10 +299,14 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
             <Button
               onClick={handleSend}
               className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
-              disabled={isSending || recipients.length === 0}
+              disabled={isSending || (sendMode === 'group' ? !selectedGroupId : recipients.length === 0)}
             >
               <Send className="h-4 w-4 mr-2" />
-              {isSending ? 'Sending...' : `Send to ${recipients.length} ${recipients.length === 1 ? 'Member' : 'Members'}`}
+              {isSending
+                ? 'Sending...'
+                : sendMode === 'group'
+                  ? 'Send to Group'
+                  : `Send to ${recipients.length} ${recipients.length === 1 ? 'Member' : 'Members'}`}
             </Button>
           </div>
         </div>

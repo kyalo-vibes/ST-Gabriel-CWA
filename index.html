@@ -5,6 +5,20 @@
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>ST Gabriel CWA Management System</title>
+      <style>
+        @media print {
+          /* Hide navigation and controls */
+          nav, aside, [data-sidebar], .sidebar, header { display: none !important; }
+          /* Hide action buttons */
+          button { display: none !important; }
+          /* Ensure charts render */
+          .recharts-wrapper { page-break-inside: avoid; }
+          /* Clean white background */
+          body { background: white !important; }
+          /* Full width content */
+          main, [role="main"] { margin: 0 !important; padding: 16px !important; width: 100% !important; }
+        }
+      </style>
     </head>
 
     <body>

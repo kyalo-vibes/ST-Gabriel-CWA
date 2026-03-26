@@ -14,6 +14,9 @@ import { ContributionsPage } from './pages/ContributionsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { EventsPage } from './pages/EventsPage';
+import { EventDetailPage } from './pages/EventDetailPage';
+import { DebtManagementPage } from './pages/DebtManagementPage';
 import { useEffect } from 'react';
 
 export default function App() {
@@ -58,6 +61,9 @@ export default function App() {
               <Route path="members" element={<MembersPage />} />
               <Route path="members/:id" element={<MemberDetailPage />} />
               <Route path="contributions" element={<ContributionsPage />} />
+              <Route path="events" element={<EventsPage />} />
+              <Route path="events/:id" element={<EventDetailPage />} />
+              <Route path="debt" element={<DebtManagementPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </>

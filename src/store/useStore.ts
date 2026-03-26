@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { membersData } from '../data/members';
 import { contributionsData } from '../data/contributions';
 import { notificationsData } from '../data/notifications';
 import { reportsData } from '../data/reports';
 import { savedFiltersData } from '../data/filters';
 import { expensesData } from '../data/expenses';
+import { eventsData, eventPaymentsData } from '../data/events';
+import type { ContributionEvent, EventPayment } from '../data/events';
 
 interface Member {
   id: string;
@@ -108,9 +111,22 @@ interface StoreState {
 
   // Reports
   reports: typeof reportsData;
+
+  // Events
+  events: ContributionEvent[];
+  eventPayments: EventPayment[];
+  createEvent: (event: Omit<ContributionEvent, 'id'>, targetMembers: Member[]) => void;
+  markPaymentPaid: (eventId: string, memberId: string) => void;
+  closeEvent: (eventId: string) => void;
+  getEventPayments: (eventId: string) => EventPayment[];
+  getPendingPaymentsByMember: (memberId: string) => (EventPayment & { event: ContributionEvent })[];
+
+  // WhatsApp Groups
+  approvedGroups: { id: string; name: string }[];
+  setApprovedGroups: (groups: { id: string; name: string }[]) => void;
 }
 
-export const useStore = create<StoreState>((set, get) => ({
+export const useStore = create<StoreState>()(persist((set, get) => ({
   // Auth
   isAuthenticated: false,
   user: null,
@@ -259,4 +275,63 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // Reports
   reports: reportsData,
-}));
+
+  // Events
+  events: eventsData as ContributionEvent[],
+  eventPayments: eventPaymentsData as EventPayment[],
+
+  createEvent: (eventData, targetMembers) => {
+    const newEvent: ContributionEvent = {
+      ...eventData,
+      id: `evt-${String(get().events.length + 1).padStart(3, '0')}`,
+    };
+    const newPayments: EventPayment[] = targetMembers.map((m, i) => ({
+      id: `ep-${newEvent.id}-${String(i + 1).padStart(3, '0')}`,
+      eventId: newEvent.id,
+      memberId: m.id,
+      amountDue: eventData.amountPerMember,
+      amountPaid: 0,
+      status: 'Pending' as const,
+    }));
+    set(state => ({
+      events: [...state.events, newEvent],
+      eventPayments: [...state.eventPayments, ...newPayments],
+    }));
+  },
+
+  closeEvent: (eventId) => {
+    set(state => ({
+      events: state.events.map(e =>
+        e.id === eventId ? { ...e, status: 'Closed' as const } : e
+      ),
+    }));
+  },
+
+  markPaymentPaid: (eventId, memberId) => {
+    const now = new Date().toISOString().split('T')[0];
+    set(state => ({
+      eventPayments: state.eventPayments.map(ep =>
+        ep.eventId === eventId && ep.memberId === memberId
+          ? { ...ep, amountPaid: ep.amountDue, status: 'Paid' as const, paidDate: now }
+          : ep
+      ),
+    }));
+  },
+
+  getEventPayments: (eventId) => {
+    return get().eventPayments.filter(ep => ep.eventId === eventId);
+  },
+
+  getPendingPaymentsByMember: (memberId) => {
+    const pending = get().eventPayments.filter(
+      ep => ep.memberId === memberId && ep.status === 'Pending'
+    );
+    return pending.map(ep => ({
+      ...ep,
+      event: get().events.find(e => e.id === ep.eventId)!,
+    }));
+  },
+  // WhatsApp Groups
+  approvedGroups: [],
+  setApprovedGroups: (groups) => set({ approvedGroups: groups }),
+}), { name: 'cwa-store' }));

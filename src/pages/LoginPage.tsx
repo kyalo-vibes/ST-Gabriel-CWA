@@ -158,16 +158,27 @@ export function LoginPage() {
             </Tabs>
             
             {/* Demo Info */}
-            <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border/30">
-              <p className="text-xs font-medium mb-2 text-foreground">Demo Credentials:</p>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Admin:</span> Use any email/password
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Member:</span> monicah.wambui@gmail.com (any password)
-                </p>
+            <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-medium mb-2 text-blue-900 dark:text-blue-200">Demo Credentials</p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setEmail('admin@cwa-thome.org')}
+                  className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                >
+                  <span className="font-medium">Admin:</span>{' '}
+                  <span className="font-mono">admin@cwa-thome.org</span>{' '}/ any password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEmail('monicah.wambui@gmail.com'); setAccountType('member'); }}
+                  className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                >
+                  <span className="font-medium">Member (Monicah Wambui):</span>{' '}
+                  <span className="font-mono">monicah.wambui@gmail.com</span>{' '}/ any password
+                </button>
               </div>
+              <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">Click a row to auto-fill the email field.</p>
             </div>
           </CardContent>
         </Card>

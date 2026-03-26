@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Send, Bell, MessageSquare, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Send, Bell, MessageSquare, Wifi, WifiOff, Loader2, RefreshCw } from 'lucide-react';
 import { NotificationModal } from '../components/notifications/NotificationModal';
 import { NotificationHistory } from '../components/notifications/NotificationHistory';
 import { toast } from 'sonner@2.0.3';
@@ -13,34 +13,36 @@ const BACKEND_URL = 'http://localhost:3001';
 function WhatsAppStatusBadge() {
   const [status, setStatus] = useState<'loading' | 'qr' | 'connected' | 'disconnected'>('loading');
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/whatsapp/status`);
-        const data = await res.json();
-        setStatus(data.status);
+  const poll = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/whatsapp/status`);
+      const data = await res.json();
+      setStatus(data.status);
 
-        if (data.status === 'qr') {
-          const qrRes = await fetch(`${BACKEND_URL}/whatsapp/qr`);
-          const qrData = await qrRes.json();
-          setQrCode(qrData.qr);
-        } else {
-          setQrCode(null);
-        }
-
-        // Stop polling once connected
-        if (data.status === 'connected' && intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      } catch {
-        setStatus('disconnected');
+      if (data.status === 'qr') {
+        const qrRes = await fetch(`${BACKEND_URL}/whatsapp/qr`);
+        const qrData = await qrRes.json();
+        setQrCode(qrData.qr);
+      } else {
         setQrCode(null);
       }
-    };
 
+      // Stop polling once connected
+      if (data.status === 'connected' && intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    } catch {
+      setStatus('disconnected');
+      setQrCode(null);
+    }
+  };
+
+  useEffect(() => {
     poll();
     intervalRef.current = setInterval(poll, 3000);
 
@@ -48,6 +50,12 @@ function WhatsAppStatusBadge() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
+
+  const triggerRetry = async () => {
+    setIsRetrying(true);
+    await poll();
+    setIsRetrying(false);
+  };
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -76,10 +84,58 @@ function WhatsAppStatusBadge() {
             Disconnected
           </Badge>
         )}
+        {status === 'disconnected' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={triggerRetry}
+            disabled={isRetrying}
+            className="h-7 gap-1.5 text-xs"
+          >
+            {isRetrying ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            Retry Connection
+          </Button>
+        )}
       </div>
+
+      {status === 'disconnected' && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setShowInstructions((prev) => !prev)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
+          >
+            How to reconnect {showInstructions ? '▴' : '▾'}
+          </button>
+          {showInstructions && (
+            <Card className="border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-900 dark:border-gray-700">
+              <CardContent className="p-3">
+                <ol className="flex flex-col gap-1 text-xs text-muted-foreground list-decimal list-inside">
+                  <li>Open a terminal in the project folder</li>
+                  <li>
+                    Run:{' '}
+                    <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                      cd backend &amp;&amp; npm run start:dev
+                    </code>
+                  </li>
+                  <li>If prompted, scan the QR code with WhatsApp on your phone</li>
+                  <li>Status will update automatically</li>
+                </ol>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {status === 'qr' && qrCode && (
         <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <p className="text-sm text-gray-600 mb-2">Scan with your WhatsApp to connect:</p>
+          <p className="text-sm text-gray-600 mb-1">Scan with your WhatsApp to connect:</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Open WhatsApp on your phone → Linked Devices → Link a Device → scan this code.
+          </p>
           <img src={qrCode} alt="Scan QR code with WhatsApp" className="w-48 h-48" />
         </div>
       )}
