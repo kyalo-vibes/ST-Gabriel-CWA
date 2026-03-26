@@ -29,6 +29,7 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
   const [targetGroup, setTargetGroup] = useState('All Members');
   const [contributionType, setContributionType] = useState('');
   const [message, setMessage] = useState(messageTemplates['Contribution Reminder']);
+  const [sendMode, setSendMode] = useState<'group' | 'individual'>('group');
 
   useEffect(() => {
     setMessage(messageTemplates[notificationType as keyof typeof messageTemplates] || '');
@@ -76,27 +77,65 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
   };
 
   const recipients = getFilteredMembers();
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSend = () => {
-    addNotification({
-      member_id: 'bulk',
-      message: message,
-      date: new Date().toISOString().split('T')[0],
-      type: notificationType,
-      status: 'Sent',
-      targetGroup: targetGroup,
-      contributionType: contributionType || undefined,
-      recipientCount: recipients.length,
-    });
+  const handleSend = async () => {
+    setIsSending(true);
+    try {
+      const body =
+        sendMode === 'group'
+          ? {
+              mode: 'group',
+              groupId: '254708306865-1618479657@g.us', // placeholder - update after first QR scan
+              message,
+              notificationType,
+              targetGroup,
+            }
+          : {
+              mode: 'individual',
+              message,
+              recipients: recipients.map(m => ({ name: m.name, phone: m.phone, balance: m.balance })),
+              notificationType,
+              targetGroup,
+            };
 
-    toast.success(`Message sent to ${recipients.length} members in ${targetGroup} group!`);
-    onOpenChange(false);
-    
-    // Reset form
-    setNotificationType('Contribution Reminder');
-    setTargetGroup('All Members');
-    setContributionType('');
-    setMessage(messageTemplates['Contribution Reminder']);
+      const res = await fetch('http://localhost:3001/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to send message');
+
+      addNotification({
+        member_id: 'bulk',
+        message,
+        date: new Date().toISOString().split('T')[0],
+        type: notificationType,
+        status: 'Sent',
+        targetGroup,
+        contributionType: contributionType || undefined,
+        recipientCount: data.sent,
+      });
+
+      toast.success(
+        sendMode === 'individual'
+          ? `Messages sent to ${data.sent} members individually!`
+          : 'Message sent to WhatsApp group!'
+      );
+      onOpenChange(false);
+
+      // Reset form
+      setNotificationType('Contribution Reminder');
+      setTargetGroup('All Members');
+      setContributionType('');
+      setMessage(messageTemplates['Contribution Reminder']);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send message';
+      toast.error(msg);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -125,6 +164,32 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
                 <SelectItem value="Fundraising">Fundraising</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Send Mode Toggle */}
+          <div className="space-y-2">
+            <Label>Send Mode</Label>
+            <div className="flex rounded-md overflow-hidden border border-gray-300 w-fit">
+              <button
+                type="button"
+                onClick={() => setSendMode('group')}
+                className={`px-4 py-2 text-sm ${sendMode === 'group' ? 'bg-[#1C3D5A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                Group Message
+              </button>
+              <button
+                type="button"
+                onClick={() => setSendMode('individual')}
+                className={`px-4 py-2 text-sm border-l border-gray-300 ${sendMode === 'individual' ? 'bg-[#1C3D5A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                Individual Messages
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              {sendMode === 'group'
+                ? 'Sends one message to the WhatsApp group chat.'
+                : 'Sends a personalised message to each member\'s phone. Placeholders like {name} and {balance} will be substituted.'}
+            </p>
           </div>
 
           {/* Target Group */}
@@ -196,13 +261,13 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSend}
               className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
-              disabled={recipients.length === 0}
+              disabled={isSending || recipients.length === 0}
             >
               <Send className="h-4 w-4 mr-2" />
-              Send to {recipients.length} {recipients.length === 1 ? 'Member' : 'Members'}
+              {isSending ? 'Sending...' : `Send to ${recipients.length} ${recipients.length === 1 ? 'Member' : 'Members'}`}
             </Button>
           </div>
         </div>

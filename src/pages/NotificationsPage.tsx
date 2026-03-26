@@ -1,11 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Send, Bell, MessageSquare } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { Send, Bell, MessageSquare, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { NotificationModal } from '../components/notifications/NotificationModal';
 import { NotificationHistory } from '../components/notifications/NotificationHistory';
 import { toast } from 'sonner@2.0.3';
+
+const BACKEND_URL = 'http://localhost:3001';
+
+function WhatsAppStatusBadge() {
+  const [status, setStatus] = useState<'loading' | 'qr' | 'connected' | 'disconnected'>('loading');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/whatsapp/status`);
+        const data = await res.json();
+        setStatus(data.status);
+
+        if (data.status === 'qr') {
+          const qrRes = await fetch(`${BACKEND_URL}/whatsapp/qr`);
+          const qrData = await qrRes.json();
+          setQrCode(qrData.qr);
+        } else {
+          setQrCode(null);
+        }
+
+        // Stop polling once connected
+        if (data.status === 'connected' && intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } catch {
+        setStatus('disconnected');
+        setQrCode(null);
+      }
+    };
+
+    poll();
+    intervalRef.current = setInterval(poll, 3000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex items-center gap-2">
+        {status === 'connected' && (
+          <Badge className="bg-green-600 text-white">
+            <Wifi className="h-3 w-3" />
+            WhatsApp Connected
+          </Badge>
+        )}
+        {status === 'loading' && (
+          <Badge variant="secondary">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Connecting...
+          </Badge>
+        )}
+        {status === 'qr' && (
+          <Badge variant="warning">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Scan QR Code
+          </Badge>
+        )}
+        {status === 'disconnected' && (
+          <Badge variant="destructive">
+            <WifiOff className="h-3 w-3" />
+            Disconnected
+          </Badge>
+        )}
+      </div>
+      {status === 'qr' && qrCode && (
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-600 mb-2">Scan with your WhatsApp to connect:</p>
+          <img src={qrCode} alt="Scan QR code with WhatsApp" className="w-48 h-48" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function NotificationsPage() {
   const { notifications, addNotification } = useStore();
@@ -32,6 +112,8 @@ export function NotificationsPage() {
 
   return (
     <div className="space-y-6">
+      <WhatsAppStatusBadge />
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl text-[#1C3D5A] dark:text-white mb-2">Notifications</h1>

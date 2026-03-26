@@ -2,7 +2,7 @@ export const membersData = [
   {
     id: "m-001",
     name: "Monicah Wambui",
-    phone: "+254712345678",
+    phone: "+254706544095",
     email: "monicah.wambui@gmail.com",
     join_date: "2025-01-10",
     total_contributed: 15000,
@@ -14,19 +14,19 @@ export const membersData = [
   {
     id: "m-002",
     name: "Mary Wanjiru",
-    phone: "+254723456789",
+    phone: "+254743818633",
     email: "mary.wanjiru@email.com",
     join_date: "2025-01-15",
     total_contributed: 18500,
-    balance: 0,
+    balance: 1000,
     status: "Active",
-    jumuia: "St. Paul",
+    jumuia: "St. Peter",
     approvalStatus: "Approved"
   },
   {
     id: "m-003",
     name: "Grace Njeri",
-    phone: "+254734567890",
+    phone: "+254X34567890",
     email: "grace.njeri@email.com",
     join_date: "2025-02-01",
     total_contributed: 12000,
@@ -38,7 +38,7 @@ export const membersData = [
   {
     id: "m-004",
     name: "Rose Akinyi",
-    phone: "+254745678901",
+    phone: "+254X45678901",
     email: "rose.akinyi@email.com",
     join_date: "2025-02-10",
     total_contributed: 20000,
@@ -50,7 +50,7 @@ export const membersData = [
   {
     id: "m-005",
     name: "Lucy Wambui",
-    phone: "+254756789012",
+    phone: "+254X56789012",
     email: "lucy.wambui@email.com",
     join_date: "2025-02-15",
     total_contributed: 9500,
@@ -62,7 +62,7 @@ export const membersData = [
   {
     id: "m-006",
     name: "Faith Adhiambo",
-    phone: "+254767890123",
+    phone: "+254X67890123",
     email: "faith.adhiambo@email.com",
     join_date: "2025-03-01",
     total_contributed: 16000,
@@ -74,7 +74,7 @@ export const membersData = [
   {
     id: "m-007",
     name: "Sarah Nyambura",
-    phone: "+254778901234",
+    phone: "+254X78901234",
     email: "sarah.nyambura@email.com",
     join_date: "2025-03-10",
     total_contributed: 14500,
@@ -86,7 +86,7 @@ export const membersData = [
   {
     id: "m-008",
     name: "Rebecca Wangari",
-    phone: "+254789012345",
+    phone: "+254X89012345",
     email: "rebecca.wangari@email.com",
     join_date: "2025-03-20",
     total_contributed: 11000,
@@ -98,7 +98,7 @@ export const membersData = [
   {
     id: "m-009",
     name: "Esther Muthoni",
-    phone: "+254790123456",
+    phone: "+254X90123456",
     email: "esther.muthoni@email.com",
     join_date: "2025-04-01",
     total_contributed: 17500,
@@ -110,7 +110,7 @@ export const membersData = [
   {
     id: "m-010",
     name: "Hannah Njoki",
-    phone: "+254701234567",
+    phone: "+254X01234567",
     email: "hannah.njoki@email.com",
     join_date: "2025-04-10",
     total_contributed: 13000,
@@ -122,7 +122,7 @@ export const membersData = [
   {
     id: "m-011",
     name: "Priscilla Auma",
-    phone: "+254712345679",
+    phone: "+254X12345679",
     email: "priscilla.auma@email.com",
     join_date: "2025-04-20",
     total_contributed: 19000,
@@ -134,7 +134,7 @@ export const membersData = [
   {
     id: "m-012",
     name: "Margaret Wairimu",
-    phone: "+254723456780",
+    phone: "+254X23456780",
     email: "margaret.wairimu@email.com",
     join_date: "2025-05-01",
     total_contributed: 8500,
@@ -146,7 +146,7 @@ export const membersData = [
   {
     id: "m-013",
     name: "Elizabeth Chebet",
-    phone: "+254734567891",
+    phone: "+254X34567891",
     email: "elizabeth.chebet@email.com",
     join_date: "2025-05-10",
     total_contributed: 21000,
@@ -158,7 +158,7 @@ export const membersData = [
   {
     id: "m-014",
     name: "Catherine Awino",
-    phone: "+254745678902",
+    phone: "+254X45678902",
     email: "catherine.awino@email.com",
     join_date: "2025-05-20",
     total_contributed: 15500,
@@ -170,7 +170,7 @@ export const membersData = [
   {
     id: "m-015",
     name: "Anne Mumbi",
-    phone: "+254756789013",
+    phone: "+254X56789013",
     email: "anne.mumbi@email.com",
     join_date: "2025-06-01",
     total_contributed: 12500,
@@ -182,7 +182,7 @@ export const membersData = [
   {
     id: "m-016",
     name: "Lydia Njambi",
-    phone: "+254767890124",
+    phone: "+254X67890124",
     email: "lydia.njambi@email.com",
     join_date: "2025-06-10",
     total_contributed: 10000,
@@ -194,7 +194,7 @@ export const membersData = [
   {
     id: "m-017",
     name: "Ruth Atieno",
-    phone: "+254778901235",
+    phone: "+254X78901235",
     email: "ruth.atieno@email.com",
     join_date: "2025-06-20",
     total_contributed: 18000,
@@ -206,7 +206,7 @@ export const membersData = [
   {
     id: "m-018",
     name: "Eunice Wanjiku",
-    phone: "+254789012346",
+    phone: "+254X89012346",
     email: "eunice.wanjiku@email.com",
     join_date: "2025-07-01",
     total_contributed: 16500,
@@ -218,7 +218,7 @@ export const membersData = [
   {
     id: "m-019",
     name: "Florence Jepkorir",
-    phone: "+254790123457",
+    phone: "+254X90123457",
     email: "florence.jepkorir@email.com",
     join_date: "2025-07-10",
     total_contributed: 14000,
@@ -230,7 +230,7 @@ export const membersData = [
   {
     id: "m-020",
     name: "Agnes Nyokabi",
-    phone: "+254701234568",
+    phone: "+254X01234568",
     email: "agnes.nyokabi@email.com",
     join_date: "2025-07-20",
     total_contributed: 9000,
@@ -242,7 +242,7 @@ export const membersData = [
   {
     id: "m-021",
     name: "Beatrice Onyango",
-    phone: "+254712345670",
+    phone: "+254X12345670",
     email: "beatrice.onyango@email.com",
     join_date: "2025-08-01",
     total_contributed: 22000,
@@ -254,7 +254,7 @@ export const membersData = [
   {
     id: "m-022",
     name: "Josephine Wangui",
-    phone: "+254723456781",
+    phone: "+254X23456781",
     email: "josephine.wangui@email.com",
     join_date: "2025-08-10",
     total_contributed: 11500,
@@ -266,7 +266,7 @@ export const membersData = [
   {
     id: "m-023",
     name: "Winnie Moraa",
-    phone: "+254734567892",
+    phone: "+254X34567892",
     email: "winnie.moraa@email.com",
     join_date: "2025-08-20",
     total_contributed: 17000,
@@ -278,7 +278,7 @@ export const membersData = [
   {
     id: "m-024",
     name: "Violet Cheptoo",
-    phone: "+254745678903",
+    phone: "+254X45678903",
     email: "violet.cheptoo@email.com",
     join_date: "2025-09-01",
     total_contributed: 13500,
@@ -290,7 +290,7 @@ export const membersData = [
   {
     id: "m-025",
     name: "Alice Wacera",
-    phone: "+254756789014",
+    phone: "+254X56789014",
     email: "alice.wacera@email.com",
     join_date: "2025-09-10",
     total_contributed: 19500,
@@ -302,7 +302,7 @@ export const membersData = [
   {
     id: "m-026",
     name: "Peris Akoth",
-    phone: "+254767890125",
+    phone: "+254X67890125",
     email: "peris.akoth@email.com",
     join_date: "2025-09-20",
     total_contributed: 10500,
@@ -314,7 +314,7 @@ export const membersData = [
   {
     id: "m-027",
     name: "Caroline Mukami",
-    phone: "+254778901236",
+    phone: "+254X78901236",
     email: "caroline.mukami@email.com",
     join_date: "2025-10-01",
     total_contributed: 15000,
@@ -326,7 +326,7 @@ export const membersData = [
   {
     id: "m-028",
     name: "Monica Apiyo",
-    phone: "+254789012347",
+    phone: "+254X89012347",
     email: "monica.apiyo@email.com",
     join_date: "2025-10-10",
     total_contributed: 8000,
@@ -338,7 +338,7 @@ export const membersData = [
   {
     id: "m-029",
     name: "Pauline Wanjala",
-    phone: "+254790123458",
+    phone: "+254X90123458",
     email: "pauline.wanjala@email.com",
     join_date: "2024-11-01",
     total_contributed: 25000,
@@ -350,7 +350,7 @@ export const membersData = [
   {
     id: "m-030",
     name: "Rachael Kemunto",
-    phone: "+254701234569",
+    phone: "+254X01234569",
     email: "rachael.kemunto@email.com",
     join_date: "2024-11-10",
     total_contributed: 12000,
@@ -362,7 +362,7 @@ export const membersData = [
   {
     id: "m-031",
     name: "Phoebe Cherotich",
-    phone: "+254712345671",
+    phone: "+254X12345671",
     email: "phoebe.cherotich@email.com",
     join_date: "2024-11-20",
     total_contributed: 18500,
@@ -374,7 +374,7 @@ export const membersData = [
   {
     id: "m-032",
     name: "Joyce Wambui",
-    phone: "+254723456782",
+    phone: "+254X23456782",
     email: "joyce.wambui@email.com",
     join_date: "2024-12-01",
     total_contributed: 16000,
@@ -386,7 +386,7 @@ export const membersData = [
   {
     id: "m-033",
     name: "Gladys Nyaga",
-    phone: "+254734567893",
+    phone: "+254X34567893",
     email: "gladys.nyaga@email.com",
     join_date: "2024-12-10",
     total_contributed: 14500,
@@ -398,7 +398,7 @@ export const membersData = [
   {
     id: "m-034",
     name: "Mercy Achieng",
-    phone: "+254745678904",
+    phone: "+254X45678904",
     email: "mercy.achieng@email.com",
     join_date: "2024-12-20",
     total_contributed: 21500,
@@ -410,7 +410,7 @@ export const membersData = [
   {
     id: "m-035",
     name: "Charity Njoki",
-    phone: "+254756789015",
+    phone: "+254X56789015",
     email: "charity.njoki@email.com",
     join_date: "2024-10-01",
     total_contributed: 11000,
@@ -422,7 +422,7 @@ export const membersData = [
   {
     id: "m-036",
     name: "Doreen Jeptanui",
-    phone: "+254767890126",
+    phone: "+254X67890126",
     email: "doreen.jeptanui@email.com",
     join_date: "2024-10-10",
     total_contributed: 17500,
@@ -434,7 +434,7 @@ export const membersData = [
   {
     id: "m-037",
     name: "Miriam Waithera",
-    phone: "+254778901237",
+    phone: "+254X78901237",
     email: "miriam.waithera@email.com",
     join_date: "2024-10-20",
     total_contributed: 9500,
@@ -446,7 +446,7 @@ export const membersData = [
   {
     id: "m-038",
     name: "Stella Atieno",
-    phone: "+254789012348",
+    phone: "+254X89012348",
     email: "stella.atieno@email.com",
     join_date: "2024-09-01",
     total_contributed: 20000,
@@ -458,7 +458,7 @@ export const membersData = [
   {
     id: "m-039",
     name: "Damaris Chepkoech",
-    phone: "+254790123459",
+    phone: "+254X90123459",
     email: "damaris.chepkoech@email.com",
     join_date: "2024-09-10",
     total_contributed: 13000,
@@ -470,7 +470,7 @@ export const membersData = [
   {
     id: "m-040",
     name: "Nancy Wangeci",
-    phone: "+254701234560",
+    phone: "+254X01234560",
     email: "nancy.wangeci@email.com",
     join_date: "2024-09-20",
     total_contributed: 15500,
@@ -482,7 +482,7 @@ export const membersData = [
   {
     id: "m-041",
     name: "Phyllis Anyango",
-    phone: "+254712345672",
+    phone: "+254X12345672",
     email: "phyllis.anyango@email.com",
     join_date: "2024-08-01",
     total_contributed: 18000,
@@ -494,7 +494,7 @@ export const membersData = [
   {
     id: "m-042",
     name: "Susan Kariuki",
-    phone: "+254723456783",
+    phone: "+254X23456783",
     email: "susan.kariuki@email.com",
     join_date: "2024-08-10",
     total_contributed: 10000,
@@ -506,7 +506,7 @@ export const membersData = [
   {
     id: "m-043",
     name: "Tabitha Jemutai",
-    phone: "+254734567894",
+    phone: "+254X34567894",
     email: "tabitha.jemutai@email.com",
     join_date: "2024-08-20",
     total_contributed: 22500,
@@ -518,7 +518,7 @@ export const membersData = [
   {
     id: "m-044",
     name: "Veronica Wamboi",
-    phone: "+254745678905",
+    phone: "+254X45678905",
     email: "veronica.wamboi@email.com",
     join_date: "2024-07-01",
     total_contributed: 12500,
@@ -530,7 +530,7 @@ export const membersData = [
   {
     id: "m-045",
     name: "Edith Adhiambo",
-    phone: "+254756789016",
+    phone: "+254X56789016",
     email: "edith.adhiambo@email.com",
     join_date: "2024-07-10",
     total_contributed: 16500,
@@ -542,7 +542,7 @@ export const membersData = [
   {
     id: "m-046",
     name: "Lilian Chepchirchir",
-    phone: "+254767890127",
+    phone: "+254X67890127",
     email: "lilian.chepchirchir@email.com",
     join_date: "2024-07-20",
     total_contributed: 14000,
@@ -554,7 +554,7 @@ export const membersData = [
   {
     id: "m-047",
     name: "Irene Njeri",
-    phone: "+254778901238",
+    phone: "+254X78901238",
     email: "irene.njeri@email.com",
     join_date: "2024-06-01",
     total_contributed: 19000,
@@ -566,7 +566,7 @@ export const membersData = [
   {
     id: "m-048",
     name: "Betty Akinyi",
-    phone: "+254789012349",
+    phone: "+254X89012349",
     email: "betty.akinyi@email.com",
     join_date: "2024-06-10",
     total_contributed: 11500,
@@ -578,7 +578,7 @@ export const membersData = [
   {
     id: "m-049",
     name: "Cecilia Jepkemoi",
-    phone: "+254790123450",
+    phone: "+254X90123450",
     email: "cecilia.jepkemoi@email.com",
     join_date: "2024-06-20",
     total_contributed: 17000,
@@ -590,7 +590,7 @@ export const membersData = [
   {
     id: "m-050",
     name: "Diana Wanjiru",
-    phone: "+254701234561",
+    phone: "+254X01234561",
     email: "diana.wanjiru@email.com",
     join_date: "2024-05-01",
     total_contributed: 23000,
@@ -603,7 +603,7 @@ export const membersData = [
   {
     id: "m-051",
     name: "Patricia Wairimu",
-    phone: "+254712345673",
+    phone: "+254X12345673",
     email: "patricia.wairimu@email.com",
     join_date: "2025-10-20",
     total_contributed: 0,
@@ -615,7 +615,7 @@ export const membersData = [
   {
     id: "m-052",
     name: "Angela Awuor",
-    phone: "+254723456784",
+    phone: "+254X23456784",
     email: "angela.awuor@email.com",
     join_date: "2025-10-22",
     total_contributed: 0,
@@ -627,7 +627,7 @@ export const membersData = [
   {
     id: "m-053",
     name: "Christine Jepkogei",
-    phone: "+254734567895",
+    phone: "+254X34567895",
     email: "christine.jepkogei@email.com",
     join_date: "2025-10-24",
     total_contributed: 0,
