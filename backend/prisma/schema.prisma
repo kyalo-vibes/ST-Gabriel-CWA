@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id             String         @id @default(cuid())
+  name           String
+  phone          String         @unique
+  email          String         @unique
+  joinDate       DateTime       @default(now())
+  status         MemberStatus   @default(ACTIVE)
+  jumuia         Jumuia
+  approvalStatus ApprovalStatus @default(PENDING)
+  contributions  Contribution[]
+  eventPayments  EventPayment[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Contribution {
+  id        String   @id @default(cuid())
+  member    Member   @relation(fields: [memberId], references: [id])
+  memberId  String
+  amount    Float
+  type      String
+  date      DateTime
+  reference String
+  status    String   @default("Completed")
+  createdAt DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  category    String
+  date        DateTime
+  reference   String
+  status      String   @default("Completed")
+  createdAt   DateTime @default(now())
+}
+
+model ContributionEvent {
+  id              String         @id @default(cuid())
+  title           String
+  type            EventType
+  amountPerMember Float
+  dueDate         DateTime
+  targetJumuia    String         @default("All")
+  status          EventStatus    @default(ACTIVE)
+  description     String?
+  payments        EventPayment[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model EventPayment {
+  id         String            @id @default(cuid())
+  event      ContributionEvent @relation(fields: [eventId], references: [id])
+  eventId    String
+  member     Member            @relation(fields: [memberId], references: [id])
+  memberId   String
+  amountDue  Float
+  amountPaid Float             @default(0)
+  status     PaymentStatus     @default(PENDING)
+  paidDate   DateTime?
+  createdAt  DateTime          @default(now())
+
+  @@unique([eventId, memberId])
+}
+
+model Notification {
+  id               String   @id @default(cuid())
+  member           Member?  @relation(fields: [memberId], references: [id])
+  memberId         String?
+  message          String
+  type             String
+  status           String   @default("Sent")
+  targetGroup      String?
+  contributionType String?
+  recipientCount   Int?
+  sentAt           DateTime @default(now())
+}
+
+model ApprovedGroup {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum Jumuia {
+  ST_PETER
+  ST_PAUL
+  ST_JOSEPH
+  ST_MARY
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventType {
+  BEREAVEMENT
+  WEDDING
+  SCHOOL_FEES
+  MONTHLY
+  HARAMBEE
+  SPECIAL
+}
+
+enum EventStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
