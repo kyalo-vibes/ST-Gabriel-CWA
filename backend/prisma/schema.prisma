@@ -16,6 +16,7 @@ model Member {
   status         MemberStatus   @default(ACTIVE)
   jumuia         Jumuia
   approvalStatus ApprovalStatus @default(PENDING)
+  passwordHash   String
   contributions  Contribution[]
   eventPayments  EventPayment[]
   notifications  Notification[]
@@ -92,6 +93,15 @@ model ApprovedGroup {
   id        String   @id
   name      String
   createdAt DateTime @default(now())
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 enum MemberStatus {

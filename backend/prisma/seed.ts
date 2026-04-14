@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -259,6 +260,7 @@ async function main() {
   console.log('Seeding database...');
 
   // --- MEMBERS ---
+  const defaultPasswordHash = await bcrypt.hash('CWA2026', 10);
   const memberIdMap = new Map<string, string>();
   for (const m of membersData) {
     const created = await prisma.member.upsert({
@@ -272,6 +274,7 @@ async function main() {
         status: toMemberStatus(m.status) as any,
         jumuia: toJumuia(m.jumuia) as any,
         approvalStatus: toApprovalStatus(m.approvalStatus) as any,
+        passwordHash: defaultPasswordHash,
       },
     });
     memberIdMap.set(m.id, created.id);
@@ -360,6 +363,36 @@ async function main() {
     }),
   });
   console.log(`  Notifications: ${notificationsData.length}`);
+
+  // --- ADMINS ---
+  const adminData = [
+    {
+      name: 'CWA Treasurer',
+      email: process.env.SEED_ADMIN_EMAIL || 'admin@stgabriel.org',
+      password: process.env.SEED_ADMIN_PASSWORD,
+    },
+    {
+      name: 'CWA Chairlady',
+      email: process.env.SEED_CHAIRLADY_EMAIL || 'chairlady@stgabriel.org',
+      password: process.env.SEED_CHAIRLADY_PASSWORD,
+    },
+  ];
+
+  if (adminData.some((a) => !a.password)) {
+    throw new Error(
+      'SEED_ADMIN_PASSWORD and SEED_CHAIRLADY_PASSWORD must be set in .env before seeding admins.',
+    );
+  }
+
+  for (const admin of adminData) {
+    const passwordHash = await bcrypt.hash(admin.password, 10);
+    await prisma.admin.upsert({
+      where: { email: admin.email },
+      create: { name: admin.name, email: admin.email, passwordHash },
+      update: {},
+    });
+  }
+  console.log(`  Admins: ${adminData.length}`);
 
   console.log('Seeding complete!');
 }
