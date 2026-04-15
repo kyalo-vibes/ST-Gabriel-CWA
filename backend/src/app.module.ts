@@ -6,6 +6,10 @@ import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
 import { ContributionsModule } from './contributions/contributions.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { EventsModule } from './events/events.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { GroupsModule } from './groups/groups.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -15,6 +19,10 @@ import { ExpensesModule } from './expenses/expenses.module';
     MembersModule,
     ContributionsModule,
     ExpensesModule,
+    EventsModule,
+    NotificationsModule,
+    GroupsModule,
+    ReportsModule,
     WhatsAppModule,
   ],
 })
