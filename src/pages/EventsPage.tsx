@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { eventsApi } from '@/api/events';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Plus, CalendarDays, DollarSign, Users, Clock, Eye, Bell } from 'lucide-react';
 import { CreateEventModal } from '../components/events/CreateEventModal';
 import { NotificationModal } from '../components/notifications/NotificationModal';
+import { toast } from 'sonner@2.0.3';
 
 const TYPE_COLORS: Record<string, string> = {
   Bereavement: 'bg-red-100 text-red-700',
@@ -19,11 +21,23 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function EventsPage() {
-  const { events, eventPayments, members } = useStore();
+  const { events, eventPayments, members, setEvents, setEventPayments } = useStore();
   const navigate = useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    eventsApi.getAll()
+      .then(async (evts) => {
+        setEvents(evts);
+        const paymentArrays = await Promise.all(evts.map(e => eventsApi.getPayments(e.id)));
+        setEventPayments(paymentArrays.flat());
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Failed to load events'))
+      .finally(() => setLoading(false));
+  }, [setEvents, setEventPayments]);
 
   // Compute stats for each event
   const eventStats = useMemo(() => {
@@ -74,6 +88,12 @@ export function EventsPage() {
         </Button>
       </div>
 
+      {loading && (
+        <div className="py-12 text-center text-gray-500">Loading events...</div>
+      )}
+
+      {!loading && (
+      <>
       {/* Summary Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -215,6 +235,8 @@ export function EventsPage() {
           </TabsContent>
         ))}
       </Tabs>
+      </>
+      )}
 
       {/* Modals */}
       <CreateEventModal open={isCreateOpen} onOpenChange={setIsCreateOpen} />

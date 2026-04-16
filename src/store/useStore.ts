@@ -120,6 +120,8 @@ interface StoreState {
   // Events
   events: ContributionEvent[];
   eventPayments: EventPayment[];
+  setEvents: (events: ContributionEvent[]) => void;
+  setEventPayments: (payments: EventPayment[]) => void;
   createEvent: (event: Omit<ContributionEvent, 'id'>, targetMembers: Member[]) => void;
   markPaymentPaid: (eventId: string, memberId: string) => void;
   closeEvent: (eventId: string) => void;
@@ -256,6 +258,8 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   // Events
   events: eventsData as ContributionEvent[],
   eventPayments: eventPaymentsData as EventPayment[],
+  setEvents: (events) => set({ events }),
+  setEventPayments: (payments) => set({ eventPayments: payments }),
 
   createEvent: (eventData, targetMembers) => {
     const newEvent: ContributionEvent = {

@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Plus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { eventsApi } from '@/api/events';
 import { toast } from 'sonner@2.0.3';
 
 interface CreateEventModalProps {
@@ -14,8 +15,17 @@ interface CreateEventModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const eventTypeMap: Record<string, string> = {
+  'Bereavement': 'BEREAVEMENT',
+  'Wedding': 'WEDDING',
+  'School Fees': 'SCHOOL_FEES',
+  'Monthly': 'MONTHLY',
+  'Harambee': 'HARAMBEE',
+  'Special': 'SPECIAL',
+};
+
 export function CreateEventModal({ open, onOpenChange }: CreateEventModalProps) {
-  const { members, createEvent } = useStore();
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     type: '' as string,
@@ -25,7 +35,7 @@ export function CreateEventModal({ open, onOpenChange }: CreateEventModalProps) 
     description: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.title || !formData.type || !formData.amountPerMember || !formData.dueDate || !formData.targetJumuia) {
@@ -33,37 +43,38 @@ export function CreateEventModal({ open, onOpenChange }: CreateEventModalProps) 
       return;
     }
 
-    const targetedMembers = members.filter(m => {
-      if (m.approvalStatus !== 'Approved') return false;
-      if (formData.targetJumuia === 'All') return true;
-      return m.jumuia === formData.targetJumuia;
-    });
-
-    createEvent(
-      {
+    setSubmitting(true);
+    try {
+      await eventsApi.create({
         title: formData.title,
-        type: formData.type as any,
+        type: eventTypeMap[formData.type],
         amountPerMember: parseFloat(formData.amountPerMember),
         dueDate: formData.dueDate,
-        targetJumuia: formData.targetJumuia as any,
-        description: formData.description,
-        createdDate: new Date().toISOString().split('T')[0],
-        status: 'Active',
-      },
-      targetedMembers
-    );
+        targetJumuia: formData.targetJumuia,
+        description: formData.description || undefined,
+      });
 
-    toast.success('Event created successfully!');
-    onOpenChange(false);
+      const updatedEvents = await eventsApi.getAll();
+      useStore.getState().setEvents(updatedEvents);
+      const paymentArrays = await Promise.all(updatedEvents.map(e => eventsApi.getPayments(e.id)));
+      useStore.getState().setEventPayments(paymentArrays.flat());
 
-    setFormData({
-      title: '',
-      type: '',
-      amountPerMember: '',
-      dueDate: '',
-      targetJumuia: '',
-      description: '',
-    });
+      toast.success('Event created! Members are being notified via WhatsApp.');
+      onOpenChange(false);
+
+      setFormData({
+        title: '',
+        type: '',
+        amountPerMember: '',
+        dueDate: '',
+        targetJumuia: '',
+        description: '',
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create event');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -155,12 +166,12 @@ export function CreateEventModal({ open, onOpenChange }: CreateEventModalProps) 
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#1C3D5A] hover:bg-[#2A5A7A]">
+            <Button type="submit" className="bg-[#1C3D5A] hover:bg-[#2A5A7A]" disabled={submitting}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Event
+              {submitting ? 'Creating...' : 'Create Event'}
             </Button>
           </div>
         </form>

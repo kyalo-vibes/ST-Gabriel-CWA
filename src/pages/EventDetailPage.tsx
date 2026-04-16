@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { eventsApi } from '@/api/events';
+import type { ContributionEvent, EventPayment } from '../data/events';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -22,16 +24,27 @@ const TYPE_COLORS: Record<string, string> = {
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { events, eventPayments, members, markPaymentPaid, closeEvent } = useStore();
+  const { members } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
+  const [event, setEvent] = useState<ContributionEvent | null>(null);
+  const [payments, setPayments] = useState<EventPayment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const event = events.find(e => e.id === id);
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([eventsApi.getOne(id), eventsApi.getPayments(id)])
+      .then(([evt, pmts]) => {
+        setEvent(evt);
+        setPayments(pmts);
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Failed to load event'))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const stats = useMemo(() => {
     if (!event) return null;
 
-    const payments = eventPayments.filter(ep => ep.eventId === event.id);
     const targetedCount = members.filter(m => {
       if (m.approvalStatus !== 'Approved') return false;
       if (event.targetJumuia === 'All') return true;
@@ -45,8 +58,12 @@ export function EventDetailPage() {
     const pendingCount = payments.filter(ep => ep.status === 'Pending').length;
     const percentage = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
 
-    return { payments, targetedCount, totalExpected, totalCollected, paidCount, pendingCount, percentage };
-  }, [event, eventPayments, members]);
+    return { targetedCount, totalExpected, totalCollected, paidCount, pendingCount, percentage };
+  }, [event, payments, members]);
+
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500">Loading event...</div>;
+  }
 
   if (!event || !stats) {
     return (
@@ -64,7 +81,7 @@ export function EventDetailPage() {
   }
 
   // Enrich payments with member data for the table, then filter by search
-  const enrichedPayments = stats.payments.map(ep => {
+  const enrichedPayments = payments.map(ep => {
     const member = members.find(m => m.id === ep.memberId);
     return { ...ep, memberName: member?.name ?? 'Unknown', memberJumuia: member?.jumuia ?? '' };
   });
@@ -73,14 +90,27 @@ export function EventDetailPage() {
     ? enrichedPayments.filter(ep => ep.memberName.toLowerCase().includes(searchTerm.toLowerCase()))
     : enrichedPayments;
 
-  const handleMarkPaid = (memberId: string, memberName: string) => {
-    markPaymentPaid(event.id, memberId);
-    toast.success(`${memberName} marked as paid!`);
+  const handleMarkPaid = async (memberId: string, memberName: string) => {
+    if (!id) return;
+    try {
+      await eventsApi.markPaid(id, memberId);
+      const updated = await eventsApi.getPayments(id);
+      setPayments(updated);
+      toast.success(`${memberName} marked as paid!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to mark payment');
+    }
   };
 
-  const handleCloseEvent = () => {
-    closeEvent(event.id);
-    toast.success('Event has been closed.');
+  const handleCloseEvent = async () => {
+    if (!id) return;
+    try {
+      const updated = await eventsApi.update(id, { status: 'CLOSED' });
+      setEvent(updated);
+      toast.success('Event has been closed.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to close event');
+    }
   };
 
   return (
@@ -166,7 +196,7 @@ export function EventDetailPage() {
       {/* Tabs */}
       <Tabs defaultValue="payments" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="payments">Payments ({stats.payments.length})</TabsTrigger>
+          <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
           <TabsTrigger value="summary">Summary</TabsTrigger>
         </TabsList>
 

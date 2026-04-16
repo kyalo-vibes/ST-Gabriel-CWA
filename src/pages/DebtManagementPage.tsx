@@ -8,6 +8,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Search, Send, DollarSign, Users, AlertTriangle, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { notificationsApi } from '@/api/notifications';
 
 const BACKEND_URL = 'http://localhost:3001';
 
@@ -169,6 +170,15 @@ export function DebtManagementPage() {
         throw new Error(data.message || 'Failed to send');
       }
 
+      const payload = {
+        memberId: row.memberId,
+        message,
+        type: 'Payment Reminder',
+        targetGroup: row.memberName,
+        contributionType: row.eventTitle,
+        recipientCount: 1,
+      };
+      await notificationsApi.create(payload);
       addNotification({
         member_id: row.memberId,
         message,
@@ -214,6 +224,14 @@ export function DebtManagementPage() {
         throw new Error(data.message || 'Failed to send');
       }
 
+      const payload = {
+        message,
+        type: 'Payment Reminder',
+        targetGroup: 'Defaulters',
+        contributionType: 'Multiple Events',
+        recipientCount: selected.length,
+      };
+      await notificationsApi.create(payload);
       addNotification({
         member_id: 'bulk',
         message,
