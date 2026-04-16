@@ -1,11 +1,12 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { reportsApi } from '@/api/reports';
 import { ChartCard } from '../components/ChartCard';
 import { DashboardCard } from '../components/DashboardCard';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import {
   Users,
-  DollarSign,
   TrendingDown,
   AlertCircle,
   Download,
@@ -14,26 +15,69 @@ import {
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Area,
   AreaChart,
 } from 'recharts';
 import { toast } from 'sonner@2.0.3';
 
+interface Summary {
+  totalMembers: number;
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  activeEvents: number;
+}
+
+interface MonthlyTrend {
+  month: string;
+  income: number;
+  expenses: number;
+  contributions: number;
+}
+
+interface TopContributor {
+  member: { id: string; name: string; jumuia: string };
+  totalContributed: number;
+}
+
+interface OutstandingMember {
+  member: { id: string; name: string; jumuia: string };
+  totalOwed: number;
+  events: unknown[];
+}
+
 export function ReportsPage() {
-  const { reports, members, contributions, user } = useStore();
-  
+  const { user } = useStore();
   const isAdmin = user?.role === 'Administrator';
+
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
+  const [topContributors, setTopContributors] = useState<TopContributor[]>([]);
+  const [outstanding, setOutstanding] = useState<OutstandingMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      reportsApi.getSummary(),
+      reportsApi.getMonthlyTrends(),
+      reportsApi.getTopContributors(),
+      reportsApi.getOutstanding(),
+    ])
+      .then(([s, trends, top, out]) => {
+        setSummary(s);
+        setMonthlyTrends(trends.map((t: MonthlyTrend) => ({ ...t, contributions: t.income })));
+        setTopContributors(top);
+        setOutstanding(out);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load reports'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleDownload = (reportType: string) => {
     const originalTitle = document.title;
@@ -42,8 +86,9 @@ export function ReportsPage() {
     document.title = originalTitle;
   };
 
-  // Colors for charts
-  const COLORS = ['#0071e3', '#34c759', '#ff9500', '#af52de', '#ff375f'];
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500">Loading reports...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -69,25 +114,25 @@ export function ReportsPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
           title="Total Members"
-          value={reports.summary.totalMembers}
+          value={summary?.totalMembers ?? 0}
           icon={Users}
-          description={`${reports.summary.activeMembers} active`}
+          description={`${summary?.activeEvents ?? 0} active events`}
         />
         <DashboardCard
           title="Total Income"
-          value={`KES ${reports.summary.totalContributions.toLocaleString()}`}
+          value={`KES ${(summary?.totalIncome ?? 0).toLocaleString()}`}
           icon={TrendingUp}
           description="All contributions"
         />
         <DashboardCard
           title="Total Expenses"
-          value={`KES ${reports.summary.totalExpenses.toLocaleString()}`}
+          value={`KES ${(summary?.totalExpenses ?? 0).toLocaleString()}`}
           icon={TrendingDown}
           description="Welfare & operations"
         />
         <DashboardCard
           title="Outstanding"
-          value={`KES ${reports.summary.outstandingBalance.toLocaleString()}`}
+          value={`KES ${(summary?.balance ?? 0).toLocaleString()}`}
           icon={AlertCircle}
           description="Pending balances"
         />
@@ -99,7 +144,7 @@ export function ReportsPage() {
         description="Income and expenses trend over time"
       >
         <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={reports.monthlyTrends} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <AreaChart data={monthlyTrends} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#0071e3" stopOpacity={0.3}/>
@@ -111,18 +156,18 @@ export function ReportsPage() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-            <XAxis 
-              dataKey="month" 
+            <XAxis
+              dataKey="month"
               stroke="#86868b"
               style={{ fontSize: '12px' }}
               tickLine={false}
             />
-            <YAxis 
+            <YAxis
               stroke="#86868b"
               style={{ fontSize: '12px' }}
               tickLine={false}
             />
-            <Tooltip 
+            <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 border: '1px solid rgba(0, 0, 0, 0.1)',
@@ -130,7 +175,7 @@ export function ReportsPage() {
                 padding: '12px',
               }}
             />
-            <Legend 
+            <Legend
               wrapperStyle={{
                 paddingTop: '20px',
               }}
@@ -155,90 +200,46 @@ export function ReportsPage() {
         </ResponsiveContainer>
       </ChartCard>
 
-      {/* Asymmetric Grid Layout */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        {/* Net Income Chart - Takes 2 columns */}
-        <div className="lg:col-span-2">
-          <ChartCard
-            title="Monthly Net Income"
-            description="Profit and loss analysis"
+      {/* Monthly Net Income */}
+      <ChartCard
+        title="Monthly Net Income"
+        description="Profit and loss analysis"
+      >
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart
+            data={monthlyTrends.map((trend) => ({
+              ...trend,
+              net: trend.contributions - trend.expenses,
+            }))}
           >
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart
-                data={reports.monthlyTrends.map((trend) => ({
-                  ...trend,
-                  net: trend.contributions - trend.expenses,
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                <XAxis 
-                  dataKey="month" 
-                  stroke="#86868b"
-                  style={{ fontSize: '12px' }}
-                />
-                <YAxis 
-                  stroke="#86868b"
-                  style={{ fontSize: '12px' }}
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid rgba(0, 0, 0, 0.1)',
-                    borderRadius: '12px',
-                    padding: '12px',
-                  }}
-                />
-                <Legend />
-                <Bar 
-                  dataKey="net" 
-                  fill="#0071e3" 
-                  name="Net Income" 
-                  radius={[8, 8, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-
-        {/* Contribution Types - Takes 1 column */}
-        <Card className="border-border/50 bg-card hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="text-lg">Contribution Types</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {reports.contributionTypes.map((type, index) => (
-                <div key={type.type}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      />
-                      <span className="text-sm font-medium">{type.type}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {type.percentage}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted/50 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${type.percentage}%`,
-                        backgroundColor: COLORS[index % COLORS.length]
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    KES {type.amount.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+            <XAxis
+              dataKey="month"
+              stroke="#86868b"
+              style={{ fontSize: '12px' }}
+            />
+            <YAxis
+              stroke="#86868b"
+              style={{ fontSize: '12px' }}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                borderRadius: '12px',
+                padding: '12px',
+              }}
+            />
+            <Legend />
+            <Bar
+              dataKey="net"
+              fill="#0071e3"
+              name="Net Income"
+              radius={[8, 8, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
 
       {/* Top Contributors and Outstanding Balances - Admin Only */}
       {isAdmin && (
@@ -255,18 +256,18 @@ export function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {reports.topContributors.map((contributor, index) => (
-                  <div 
-                    key={contributor.member_id} 
+                {topContributors.map((contributor, index) => (
+                  <div
+                    key={contributor.member.id}
                     className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center shadow-sm">
                       <span className="font-semibold text-sm">{index + 1}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{contributor.name}</p>
+                      <p className="font-medium truncate">{contributor.member.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        KES {contributor.total.toLocaleString()}
+                        KES {contributor.totalContributed.toLocaleString()}
                       </p>
                     </div>
                     <div className="text-xl">
@@ -290,17 +291,17 @@ export function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {reports.outstandingBalances.map((member) => (
-                  <div 
-                    key={member.member_id} 
+                {outstanding.map((row) => (
+                  <div
+                    key={row.member.id}
                     className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/30 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.member_id}</p>
+                      <p className="font-medium truncate">{row.member.name}</p>
+                      <p className="text-xs text-muted-foreground">{row.member.jumuia}</p>
                     </div>
                     <div className="text-destructive font-semibold ml-4">
-                      KES {member.balance.toLocaleString()}
+                      KES {row.totalOwed.toLocaleString()}
                     </div>
                   </div>
                 ))}

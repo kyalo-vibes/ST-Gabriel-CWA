@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { notificationsApi } from '@/api/notifications';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -144,24 +145,45 @@ function WhatsAppStatusBadge() {
 }
 
 export function NotificationsPage() {
-  const { notifications, addNotification } = useStore();
+  const { notifications, addNotification, setNotifications } = useStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleResend = (notification: any) => {
-    addNotification({
-      member_id: notification.member_id,
-      message: notification.message,
-      date: new Date().toISOString().split('T')[0],
-      type: notification.type,
-      status: 'Sent',
-      targetGroup: notification.targetGroup,
-      contributionType: notification.contributionType,
-      recipientCount: notification.recipientCount,
-    });
-    toast.success('Notification resent successfully!');
+  useEffect(() => {
+    notificationsApi
+      .getAll()
+      .then((data) => setNotifications(data))
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Failed to load notifications'),
+      );
+  }, [setNotifications]);
+
+  const handleResend = async (notification: any) => {
+    try {
+      await notificationsApi.create({
+        memberId: notification.member_id === 'bulk' ? undefined : notification.member_id,
+        message: notification.message,
+        type: notification.type,
+        targetGroup: notification.targetGroup,
+        contributionType: notification.contributionType,
+        recipientCount: notification.recipientCount,
+      });
+      addNotification({
+        member_id: notification.member_id,
+        message: notification.message,
+        date: new Date().toISOString().split('T')[0],
+        type: notification.type,
+        status: 'Sent',
+        targetGroup: notification.targetGroup,
+        contributionType: notification.contributionType,
+        recipientCount: notification.recipientCount,
+      });
+      toast.success('Notification logged successfully!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to log notification');
+    }
   };
 
-  const handleDuplicate = (notification: any) => {
+  const handleDuplicate = (_notification: any) => {
     setIsDialogOpen(true);
     toast.info('Message template loaded. Edit and send.');
   };

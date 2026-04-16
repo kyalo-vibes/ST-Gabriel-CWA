@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { reportsApi } from '../api/reports';
 import { DashboardCard } from '../components/DashboardCard';
 import { ChartCard } from '../components/ChartCard';
 import { Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
@@ -20,12 +22,43 @@ import {
 
 const COLORS = ['#1C3D5A', '#D4AF37', '#4A90E2', '#E74C3C'];
 
-export function DashboardPage() {
-  const { members, contributions, reports } = useStore();
+interface Summary {
+  totalMembers: number;
+  activeMembers: number;
+  totalContributions: number;
+  totalExpenses: number;
+  totalOutstanding: number;
+  membersWithDebt: number;
+}
 
-  const activeMembers = members.filter((m) => m.status === 'Active').length;
-  const totalContributions = contributions.reduce((sum, c) => sum + c.amount, 0);
-  const totalOutstanding = members.reduce((sum, m) => sum + m.balance, 0);
+export function DashboardPage() {
+  const { reports } = useStore();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [monthlyTrends, setMonthlyTrends] = useState(reports.monthlyTrends);
+  const [topContributors, setTopContributors] = useState(reports.topContributors);
+
+  useEffect(() => {
+    Promise.all([
+      reportsApi.getSummary(),
+      reportsApi.getMonthlyTrends(),
+      reportsApi.getTopContributors(),
+    ])
+      .then(([summaryData, trendsData, topData]) => {
+        setSummary(summaryData);
+        setMonthlyTrends(trendsData);
+        setTopContributors(topData);
+      })
+      .catch(() => {
+        // fall through — static store data shown as fallback
+      });
+  }, []);
+
+  const totalMembers = summary?.totalMembers ?? reports.summary.totalMembers;
+  const activeMembers = summary?.activeMembers ?? reports.summary.activeMembers;
+  const totalContributions = summary?.totalContributions ?? reports.summary.totalContributions;
+  const totalExpenses = summary?.totalExpenses ?? reports.summary.totalExpenses;
+  const totalOutstanding = summary?.totalOutstanding ?? reports.summary.outstandingBalance;
+  const membersWithDebt = summary?.membersWithDebt ?? 0;
 
   return (
     <div className="space-y-6">
@@ -38,7 +71,7 @@ export function DashboardPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
           title="Total Members"
-          value={members.length}
+          value={totalMembers}
           icon={Users}
           description={`${activeMembers} active members`}
           trend={{ value: 8, isPositive: true }}
@@ -52,7 +85,7 @@ export function DashboardPage() {
         />
         <DashboardCard
           title="Total Expenses"
-          value={`KES ${reports.summary.totalExpenses.toLocaleString()}`}
+          value={`KES ${totalExpenses.toLocaleString()}`}
           icon={TrendingUp}
           description="Community welfare"
         />
@@ -60,7 +93,7 @@ export function DashboardPage() {
           title="Outstanding Balance"
           value={`KES ${totalOutstanding.toLocaleString()}`}
           icon={AlertCircle}
-          description={`${members.filter((m) => m.balance > 0).length} members`}
+          description={`${membersWithDebt} members`}
         />
       </div>
 
@@ -71,7 +104,7 @@ export function DashboardPage() {
           description="Contributions over the last 10 months"
         >
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={reports.monthlyTrends}>
+            <LineChart data={monthlyTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
@@ -125,7 +158,7 @@ export function DashboardPage() {
           description="New members per month"
         >
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={reports.monthlyTrends}>
+            <BarChart data={monthlyTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
@@ -138,7 +171,7 @@ export function DashboardPage() {
 
         <ChartCard title="Top Contributors" description="Highest contributing members">
           <div className="space-y-4">
-            {reports.topContributors.map((contributor, index) => (
+            {topContributors.map((contributor, index) => (
               <div key={contributor.member_id} className="flex items-center gap-4">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#1C3D5A] text-white flex items-center justify-center">
                   {index + 1}

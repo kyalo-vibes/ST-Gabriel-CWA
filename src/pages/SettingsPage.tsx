@@ -1,4 +1,6 @@
 import { useStore } from '../store/useStore';
+import { groupsApi } from '@/api/groups';
+import { schedulerApi, ScheduleConfig } from '@/api/scheduler';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,10 +10,12 @@ import { Separator } from '../components/ui/separator';
 import { User, Mail, Phone, Sun, Moon, MessageSquare, Loader2, CheckCircle } from 'lucide-react';
 import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner@2.0.3';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function SettingsPage() {
   const { user, theme, toggleTheme, approvedGroups, setApprovedGroups } = useStore();
+  const isAdmin = user?.role === 'Administrator';
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -23,9 +27,65 @@ export function SettingsPage() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
   const [loadingGroups, setLoadingGroups] = useState(false);
 
+  // Automated reminders state
+  const [scheduleConfigs, setScheduleConfigs] = useState<ScheduleConfig[]>([]);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    groupsApi
+      .getAll()
+      .then((groups) => setApprovedGroups(groups))
+      .catch(() => {});
+  }, [setApprovedGroups]);
+
+  useEffect(() => {
+    schedulerApi
+      .getConfig()
+      .then(setScheduleConfigs)
+      .catch(() => {});
+  }, []);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success('Settings updated successfully!');
+  };
+
+  const handleSaveGroups = async () => {
+    const checked = allGroups.filter((g) => selectedGroupIds.has(g.id));
+    try {
+      for (const existing of approvedGroups) {
+        if (!selectedGroupIds.has(existing.id)) {
+          await groupsApi.remove(existing.id);
+        }
+      }
+      for (const g of checked) {
+        await groupsApi.create({ id: g.id, name: g.name });
+      }
+      setApprovedGroups(checked);
+      toast.success('WhatsApp groups saved!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save groups');
+    }
+  };
+
+  const handleScheduleChange = (id: string, field: 'hour' | 'enabled', value: number | boolean) => {
+    setScheduleConfigs((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+  };
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      await Promise.all(
+        scheduleConfigs.map((c) =>
+          schedulerApi.updateConfig(c.id, { hour: c.hour, enabled: c.enabled }),
+        ),
+      );
+      toast.success('Reminder settings saved!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save reminder settings');
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   return (
@@ -233,11 +293,7 @@ export function SettingsPage() {
 
               <Button
                 className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
-                onClick={() => {
-                  const checked = allGroups.filter(g => selectedGroupIds.has(g.id));
-                  setApprovedGroups(checked);
-                  toast.success('WhatsApp groups saved!');
-                }}
+                onClick={handleSaveGroups}
               >
                 Save Selected Groups
               </Button>
@@ -245,6 +301,50 @@ export function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Automated Reminders */}
+      {isAdmin && scheduleConfigs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Automated Reminders</CardTitle>
+            <CardDescription>Configure when automatic WhatsApp reminders are sent to members.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {scheduleConfigs.map((config) => (
+              <div key={config.id} className="flex items-center justify-between gap-4 py-2">
+                <div className="flex items-center gap-3 flex-1">
+                  <Switch
+                    checked={config.enabled}
+                    onCheckedChange={(checked) => handleScheduleChange(config.id, 'enabled', checked)}
+                  />
+                  <span className="text-sm font-medium">{config.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Time:</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={config.hour}
+                    onChange={(e) => handleScheduleChange(config.id, 'hour', parseInt(e.target.value) || 0)}
+                    className="w-16 h-8 text-center text-sm"
+                  />
+                  <span className="text-xs text-gray-500">:00</span>
+                </div>
+              </div>
+            ))}
+            <Separator />
+            <Button
+              className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
+              onClick={handleSaveSchedule}
+              disabled={savingSchedule}
+            >
+              {savingSchedule ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save Reminder Settings
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* System Information */}
       <Card>

@@ -104,6 +104,7 @@ interface StoreState {
 
   // Notifications
   notifications: Notification[];
+  setNotifications: (notifications: Notification[]) => void;
   addNotification: (notification: Omit<Notification, 'id'>) => void;
 
   // Filters
@@ -220,6 +221,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
 
   // Notifications
   notifications: notificationsData as Notification[],
+  setNotifications: (notifications) => set({ notifications }),
   addNotification: (notification) => {
     const newNotification = {
       ...notification,
