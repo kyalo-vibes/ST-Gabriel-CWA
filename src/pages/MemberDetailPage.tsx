@@ -1,20 +1,41 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { membersApi } from '../api/members';
+import { contributionsApi } from '../api/contributions';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ArrowLeft, Phone, Mail, Calendar, Users } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
 import { DataTable } from '../components/DataTable';
 
 export function MemberDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getMemberById, getContributionsByMember, members, notifications } = useStore();
+  const { notifications } = useStore();
 
-  const member = getMemberById(id || '');
-  const memberContributions = getContributionsByMember(id || '');
+  const [member, setMember] = useState<any>(null);
+  const [memberContributions, setMemberContributions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([membersApi.getOne(id), contributionsApi.getByMember(id)])
+      .then(([m, contribs]) => {
+        setMember(m);
+        setMemberContributions(contribs);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load member'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
   const memberNotifications = notifications.filter((n) => n.member_id === id);
+
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500">Loading...</div>;
+  }
 
   if (!member) {
     return (

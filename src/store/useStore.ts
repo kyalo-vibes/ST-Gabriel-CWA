@@ -74,7 +74,7 @@ interface StoreState {
   // Auth
   isAuthenticated: boolean;
   user: { name: string; email: string; role: string } | null;
-  login: (email: string, password: string, accountType?: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   token: string | null;
   setToken: (token: string | null) => void;
@@ -85,6 +85,7 @@ interface StoreState {
 
   // Members
   members: Member[];
+  setMembers: (members: Member[]) => void;
   addMember: (member: Omit<Member, 'id'>) => void;
   updateMember: (id: string, member: Partial<Member>) => void;
   deleteMember: (id: string) => void;
@@ -92,11 +93,13 @@ interface StoreState {
 
   // Contributions
   contributions: Contribution[];
+  setContributions: (contributions: Contribution[]) => void;
   addContribution: (contribution: Omit<Contribution, 'id'>) => void;
   getContributionsByMember: (memberId: string) => Contribution[];
 
   // Expenses
   expenses: Expense[];
+  setExpenses: (expenses: Expense[]) => void;
   addExpense: (expense: Omit<Expense, 'id'>) => void;
 
   // Notifications
@@ -132,57 +135,22 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   // Auth
   isAuthenticated: false,
   user: null,
-  login: async (email: string, password: string, accountType: string = 'admin') => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (accountType === 'member') {
-      // Check if member exists and is approved
-      const member = get().members.find(m => m.email.toLowerCase() === email.toLowerCase());
-      
-      console.log('Member login attempt:', email);
-      console.log('Found member:', member);
-      
-      if (!member) {
-        console.log('Member not found');
-        return false;
-      }
-      
-      if (member.approvalStatus === 'Pending') {
-        console.log('Member pending approval');
-        return false; // Account pending approval
-      }
-      
-      if (member.approvalStatus === 'Rejected') {
-        console.log('Member rejected');
-        return false; // Account rejected
-      }
-      
-      // Allow login for approved members regardless of active/inactive status for demo
-      if (member.approvalStatus === 'Approved') {
-        set({
-          isAuthenticated: true,
-          user: {
-            name: member.name,
-            email: member.email,
-            role: 'Member',
-          },
-        });
-        console.log('Member login successful');
-        return true;
-      }
-      
-      return false;
-    } else {
-      // Admin login - accept any credentials for demo
+  login: async (email: string, password: string) => {
+    const { login: apiLogin } = await import('../api/auth');
+    try {
+      const data = await apiLogin(email, password);
       set({
         isAuthenticated: true,
+        token: data.access_token,
         user: {
-          name: 'Admin User',
-          email: email,
-          role: 'Administrator',
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
         },
       });
       return true;
+    } catch {
+      return false;
     }
   },
   logout: () => {
@@ -201,6 +169,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
 
   // Members
   members: membersData as Member[],
+  setMembers: (members) => set({ members }),
   addMember: (member) => {
     const newMember = {
       ...member,
@@ -224,6 +193,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
 
   // Contributions
   contributions: contributionsData as Contribution[],
+  setContributions: (contributions) => set({ contributions }),
   addContribution: (contribution) => {
     const newContribution = {
       ...contribution,
@@ -237,6 +207,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
 
   // Expenses
   expenses: expensesData as Expense[],
+  setExpenses: (expenses) => set({ expenses }),
   addExpense: (expense) => {
     const newExpense = {
       ...expense,

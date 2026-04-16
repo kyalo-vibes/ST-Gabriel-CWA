@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { contributionsApi } from '../api/contributions';
+import { expensesApi } from '../api/expenses';
 import { DataTable } from '../components/DataTable';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -15,10 +17,27 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 
 export function ContributionsPage() {
-  const { contributions, members, addContribution, expenses, addExpense } = useStore();
+  const {
+    contributions,
+    members,
+    addContribution,
+    expenses,
+    addExpense,
+    setContributions,
+    setExpenses,
+  } = useStore();
   const [isContributionDialogOpen, setIsContributionDialogOpen] = useState(false);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+
+  useEffect(() => {
+    Promise.all([contributionsApi.getAll(), expensesApi.getAll()])
+      .then(([contribs, exps]) => {
+        setContributions(contribs);
+        setExpenses(exps);
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load data'));
+  }, [setContributions, setExpenses]);
   const [contributionFormData, setContributionFormData] = useState({
     member_id: '',
     amount: '',
@@ -60,40 +79,68 @@ export function ContributionsPage() {
     })
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const handleContributionSubmit = (e: React.FormEvent) => {
+  const handleContributionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addContribution({
-      ...contributionFormData,
-      amount: parseFloat(contributionFormData.amount),
-      status: 'Completed',
-    });
-    toast.success('Contribution added successfully!');
-    setIsContributionDialogOpen(false);
-    setContributionFormData({
-      member_id: '',
-      amount: '',
-      type: 'Monthly Contribution',
-      date: new Date().toISOString().split('T')[0],
-      reference: '',
-    });
+    try {
+      const created = await contributionsApi.create({
+        memberId: contributionFormData.member_id,
+        amount: parseFloat(contributionFormData.amount),
+        type: contributionFormData.type,
+        date: contributionFormData.date,
+        reference: contributionFormData.reference,
+      });
+      addContribution({
+        member_id: created.memberId ?? created.member_id,
+        amount: created.amount,
+        type: created.type,
+        date: created.date,
+        reference: created.reference,
+        status: created.status,
+      });
+      toast.success('Contribution added successfully!');
+      setIsContributionDialogOpen(false);
+      setContributionFormData({
+        member_id: '',
+        amount: '',
+        type: 'Monthly Contribution',
+        date: new Date().toISOString().split('T')[0],
+        reference: '',
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add contribution');
+    }
   };
 
-  const handleExpenseSubmit = (e: React.FormEvent) => {
+  const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addExpense({
-      ...expenseFormData,
-      amount: parseFloat(expenseFormData.amount),
-      status: 'Completed',
-    });
-    toast.success('Expense added successfully!');
-    setIsExpenseDialogOpen(false);
-    setExpenseFormData({
-      description: '',
-      amount: '',
-      category: 'Welfare',
-      date: new Date().toISOString().split('T')[0],
-      reference: '',
-    });
+    try {
+      const created = await expensesApi.create({
+        description: expenseFormData.description,
+        amount: parseFloat(expenseFormData.amount),
+        category: expenseFormData.category,
+        date: expenseFormData.date,
+        reference: expenseFormData.reference,
+      });
+      addExpense({
+        description: created.description,
+        amount: created.amount,
+        category: created.category,
+        date: created.date,
+        reference: created.reference,
+        status: created.status,
+      });
+      toast.success('Expense added successfully!');
+      setIsExpenseDialogOpen(false);
+      setExpenseFormData({
+        description: '',
+        amount: '',
+        category: 'Welfare',
+        date: new Date().toISOString().split('T')[0],
+        reference: '',
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add expense');
+    }
   };
 
   const contributionColumns = [

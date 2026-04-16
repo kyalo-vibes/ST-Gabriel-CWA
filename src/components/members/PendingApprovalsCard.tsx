@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Check, X, Phone, Mail, Users } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { membersApi } from '../../api/members';
 import { toast } from 'sonner@2.0.3';
 import {
   AlertDialog,
@@ -21,17 +22,24 @@ export function PendingApprovalsCard() {
 
   const pendingMembers = members.filter(m => m.approvalStatus === 'Pending');
 
-  const handleApprove = (memberId: string, memberName: string) => {
-    updateMember(memberId, {
-      approvalStatus: 'Approved',
-      status: 'Active',
-    });
-    toast.success(`${memberName} has been approved!`);
+  const handleApprove = async (memberId: string, memberName: string) => {
+    try {
+      await membersApi.approve(memberId);
+      updateMember(memberId, { approvalStatus: 'Approved', status: 'Active' });
+      toast.success(`${memberName} has been approved!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to approve member');
+    }
   };
 
-  const handleReject = (memberId: string, memberName: string) => {
-    deleteMember(memberId);
-    toast.info(`${memberName}'s application has been rejected.`);
+  const handleReject = async (memberId: string, memberName: string) => {
+    try {
+      await membersApi.remove(memberId);
+      deleteMember(memberId);
+      toast.info(`${memberName}'s application has been rejected.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reject application');
+    }
   };
 
   if (pendingMembers.length === 0) {

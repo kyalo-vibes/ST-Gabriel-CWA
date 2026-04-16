@@ -6,7 +6,15 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { UserPlus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { membersApi } from '../../api/members';
 import { toast } from 'sonner@2.0.3';
+
+const jumuiaToEnum: Record<string, string> = {
+  'St. Peter': 'ST_PETER',
+  'St. Paul': 'ST_PAUL',
+  'St. Joseph': 'ST_JOSEPH',
+  'St. Mary': 'ST_MARY',
+};
 
 interface AddMemberModalProps {
   open: boolean;
@@ -14,7 +22,7 @@ interface AddMemberModalProps {
 }
 
 export function AddMemberModal({ open, onOpenChange }: AddMemberModalProps) {
-  const { addMember } = useStore();
+  const { setMembers } = useStore();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -22,8 +30,9 @@ export function AddMemberModal({ open, onOpenChange }: AddMemberModalProps) {
     jumuia: '',
     status: 'Active',
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.phone || !formData.email || !formData.jumuia) {
@@ -31,29 +40,28 @@ export function AddMemberModal({ open, onOpenChange }: AddMemberModalProps) {
       return;
     }
 
-    addMember({
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      jumuia: formData.jumuia,
-      status: formData.status,
-      join_date: new Date().toISOString().split('T')[0],
-      total_contributed: 0,
-      balance: 0,
-      approvalStatus: 'Approved', // Admin-added members are auto-approved
-    });
+    setSubmitting(true);
+    try {
+      const created = await membersApi.create({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        jumuia: jumuiaToEnum[formData.jumuia] ?? formData.jumuia,
+        joinDate: new Date().toISOString().split('T')[0],
+      });
+      // Admin-added members are auto-approved
+      await membersApi.approve(created.id);
+      const refreshed = await membersApi.getAll();
+      setMembers(refreshed);
 
-    toast.success(`${formData.name} has been added successfully!`);
-    onOpenChange(false);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      phone: '',
-      email: '',
-      jumuia: '',
-      status: 'Active',
-    });
+      toast.success(`${formData.name} has been added successfully!`);
+      onOpenChange(false);
+      setFormData({ name: '', phone: '', email: '', jumuia: '', status: 'Active' });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add member');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -138,12 +146,13 @@ export function AddMemberModal({ open, onOpenChange }: AddMemberModalProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               type="submit"
+              disabled={submitting}
               className="bg-[#1C3D5A] hover:bg-[#2A5A7A]"
             >
               <UserPlus className="h-4 w-4 mr-2" />
-              Add Member
+              {submitting ? 'Adding...' : 'Add Member'}
             </Button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useStore } from '../store/useStore';
+import { membersApi } from '@/api/members';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,9 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { UserPlus } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 
+const JUMUIA_ENUM: Record<string, string> = {
+  'St. Peter': 'ST_PETER',
+  'St. Paul': 'ST_PAUL',
+  'St. Joseph': 'ST_JOSEPH',
+  'St. Mary': 'ST_MARY',
+};
+
 export function SignupPage() {
   const navigate = useNavigate();
-  const { addMember } = useStore();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -42,27 +48,20 @@ export function SignupPage() {
       return;
     }
 
-    // Create member with pending status
-    const fullName = `${formData.firstName} ${formData.lastName}`;
-    
-    addMember({
-      name: fullName,
-      phone: formData.phone,
-      email: formData.email,
-      jumuia: formData.jumuia,
-      status: 'Pending',
-      join_date: formData.joinDate,
-      total_contributed: 0,
-      balance: 0,
-      approvalStatus: 'Pending',
-    });
-
-    toast.success('Account created successfully! Please wait for admin approval.');
-    
-    // Redirect to login page
-    setTimeout(() => {
-      navigate('/login');
-    }, 2000);
+    try {
+      await membersApi.create({
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phone,
+        email: formData.email,
+        jumuia: JUMUIA_ENUM[formData.jumuia] ?? formData.jumuia,
+        joinDate: formData.joinDate,
+      });
+      toast.success('Registration submitted! Awaiting admin approval.');
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      toast.error(message);
+    }
   };
 
   return (

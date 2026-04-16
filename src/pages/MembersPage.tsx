@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { membersApi } from '../api/members';
 import { DataTable } from '../components/DataTable';
 import { FilterPanel } from '../components/filters/FilterPanel';
 import { FilterTagList } from '../components/filters/FilterTagList';
@@ -23,9 +24,18 @@ import {
 } from '../components/ui/alert-dialog';
 
 export function MembersPage() {
-  const { members, deleteMember, activeFilters } = useStore();
+  const { members, deleteMember, activeFilters, setMembers } = useStore();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    membersApi
+      .getAll()
+      .then(setMembers)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load members'))
+      .finally(() => setLoading(false));
+  }, [setMembers]);
 
   // Apply active filters - exclude pending members from main list
   const getFilteredMembers = () => {
@@ -62,9 +72,14 @@ export function MembersPage() {
 
   const filteredMembers = getFilteredMembers();
 
-  const handleDeleteMember = (memberId: string, memberName: string) => {
-    deleteMember(memberId);
-    toast.success(`${memberName} has been removed.`);
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    try {
+      await membersApi.remove(memberId);
+      deleteMember(memberId);
+      toast.success(`${memberName} has been removed.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    }
   };
 
   const columns = [
@@ -145,6 +160,10 @@ export function MembersPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500">Loading members...</div>;
+  }
 
   return (
     <div className="space-y-6">
