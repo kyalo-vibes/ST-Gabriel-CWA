@@ -15,9 +15,13 @@ export class SchedulerService {
   ) {}
 
   // ─── 1. Monthly contribution reminder ───────────────────────────────────────
-  // 8am on the 1st of every month
-  @Cron('0 8 1 * *')
+  // Fires hourly; runs only when the configured hour matches
+  @Cron('0 * * * *')
   async sendMonthlyReminders() {
+    const config = await this.prisma.scheduleConfig.findUnique({ where: { id: 'monthly' } });
+    const currentHour = new Date().getHours();
+    if (!config?.enabled || config.hour !== currentHour) return;
+
     this.logger.log('Running monthly contribution reminder job');
 
     const members = await this.prisma.member.findMany({
@@ -51,9 +55,13 @@ export class SchedulerService {
   }
 
   // ─── 2. Due-soon reminder ────────────────────────────────────────────────────
-  // 8am daily — events due in exactly 3 days
-  @Cron('0 8 * * *')
+  // Fires hourly; runs only when the configured hour matches
+  @Cron('0 * * * *')
   async sendDueSoonReminders() {
+    const config = await this.prisma.scheduleConfig.findUnique({ where: { id: 'dueSoon' } });
+    const currentHour = new Date().getHours();
+    if (!config?.enabled || config.hour !== currentHour) return;
+
     this.logger.log('Running due-soon reminder job');
 
     const in3Days = new Date();
@@ -99,9 +107,13 @@ export class SchedulerService {
   }
 
   // ─── 3. Overdue reminder ─────────────────────────────────────────────────────
-  // 9am daily — active events past their due date
-  @Cron('0 9 * * *')
+  // Fires hourly; runs only when the configured hour matches
+  @Cron('0 * * * *')
   async sendOverdueReminders() {
+    const config = await this.prisma.scheduleConfig.findUnique({ where: { id: 'overdue' } });
+    const currentHour = new Date().getHours();
+    if (!config?.enabled || config.hour !== currentHour) return;
+
     this.logger.log('Running overdue reminder job');
 
     const now = new Date();
@@ -144,9 +156,13 @@ export class SchedulerService {
   }
 
   // ─── 4. Weekly defaulters digest ─────────────────────────────────────────────
-  // 7am every Monday — summary to admin phone
-  @Cron('0 7 * * MON')
+  // Fires hourly; runs only when the configured hour matches — summary to admin phone
+  @Cron('0 * * * *')
   async sendWeeklyDigest() {
+    const config = await this.prisma.scheduleConfig.findUnique({ where: { id: 'weeklyDigest' } });
+    const currentHour = new Date().getHours();
+    if (!config?.enabled || config.hour !== currentHour) return;
+
     this.logger.log('Running weekly defaulters digest job');
 
     const adminPhone = this.config.get<string>('ADMIN_PHONE');

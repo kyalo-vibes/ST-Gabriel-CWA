@@ -104,6 +104,14 @@ model Admin {
   updatedAt    DateTime @updatedAt
 }
 
+model ScheduleConfig {
+  id        String   @id
+  label     String
+  hour      Int
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
 enum MemberStatus {
   ACTIVE
   INACTIVE

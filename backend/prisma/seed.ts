@@ -394,6 +394,18 @@ async function main() {
   }
   console.log(`  Admins: ${adminData.length}`);
 
+  // --- SCHEDULE CONFIG ---
+  await prisma.scheduleConfig.createMany({
+    data: [
+      { id: 'monthly',      label: 'Monthly Reminder',    hour: 8, enabled: true },
+      { id: 'dueSoon',      label: 'Due-Soon Alert (3d)', hour: 8, enabled: true },
+      { id: 'overdue',      label: 'Overdue Reminder',    hour: 9, enabled: true },
+      { id: 'weeklyDigest', label: 'Weekly Admin Digest', hour: 7, enabled: true },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('  ScheduleConfig: 4 defaults');
+
   console.log('Seeding complete!');
 }
 

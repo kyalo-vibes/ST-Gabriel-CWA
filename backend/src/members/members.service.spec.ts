@@ -32,6 +32,35 @@ const MEMBER_FIXTURE = {
   joinDate: new Date('2024-01-01'),
 };
 
+// Enriched fixture returned by findUnique/findMany after the include was added.
+// The service strips joinDate, passwordHash, contributions, eventPayments and
+// computes join_date, total_contributed, and balance from these arrays.
+const ENRICHED_MEMBER_FIXTURE = {
+  ...MEMBER_FIXTURE,
+  contributions: [{ amount: 500 }, { amount: 300 }],
+  eventPayments: [
+    { amountDue: 1000, amountPaid: 200 },
+    { amountDue: 500, amountPaid: 0 },
+  ],
+};
+
+// The shape the service returns after transforming ENRICHED_MEMBER_FIXTURE.
+// join_date  = MEMBER_FIXTURE.joinDate.toISOString()  = "2024-01-01T00:00:00.000Z"
+// total_contributed = 500 + 300 = 800
+// balance    = (1000-200) + (500-0) = 1300
+const TRANSFORMED_MEMBER = {
+  id: 'member-1',
+  name: 'Monicah Wambui',
+  phone: '+254701234567',
+  email: 'monicah@test.com',
+  approvalStatus: 'PENDING',
+  status: 'PENDING',
+  jumuia: 'ST_PETER',
+  join_date: MEMBER_FIXTURE.joinDate.toISOString(),
+  total_contributed: 800,
+  balance: 1300,
+};
+
 describe('MembersService', () => {
   let service: MembersService;
   let mockPrisma: {
@@ -76,15 +105,83 @@ describe('MembersService', () => {
   describe('findAll()', () => {
     it('returns an array of all members ordered by name', async () => {
       // Arrange
-      const members = [MEMBER_FIXTURE, { ...MEMBER_FIXTURE, id: 'member-2', name: 'Zara Wanjiku' }];
+      const members = [
+        ENRICHED_MEMBER_FIXTURE,
+        { ...ENRICHED_MEMBER_FIXTURE, id: 'member-2', name: 'Zara Wanjiku' },
+      ];
       mockPrisma.member.findMany.mockResolvedValue(members);
 
       // Act
       const result = await service.findAll();
 
       // Assert
-      expect(result).toEqual(members);
-      expect(mockPrisma.member.findMany).toHaveBeenCalledWith({ orderBy: { name: 'asc' } });
+      expect(result).toHaveLength(2);
+      expect(mockPrisma.member.findMany).toHaveBeenCalledWith({
+        include: {
+          contributions: { select: { amount: true } },
+          eventPayments: {
+            where: { status: 'PENDING', event: { status: 'ACTIVE' } },
+            select: { amountDue: true, amountPaid: true },
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('computes total_contributed as the sum of all contribution amounts', async () => {
+      // Arrange
+      mockPrisma.member.findMany.mockResolvedValue([ENRICHED_MEMBER_FIXTURE]);
+
+      // Act
+      const result = await service.findAll();
+
+      // Assert — 500 + 300 = 800
+      expect(result[0].total_contributed).toBe(800);
+    });
+
+    it('computes balance as sum of (amountDue - amountPaid) for PENDING event payments', async () => {
+      // Arrange
+      mockPrisma.member.findMany.mockResolvedValue([ENRICHED_MEMBER_FIXTURE]);
+
+      // Act
+      const result = await service.findAll();
+
+      // Assert — (1000-200) + (500-0) = 1300
+      expect(result[0].balance).toBe(1300);
+    });
+
+    it('does NOT expose passwordHash in the returned objects', async () => {
+      // Arrange
+      mockPrisma.member.findMany.mockResolvedValue([ENRICHED_MEMBER_FIXTURE]);
+
+      // Act
+      const result = await service.findAll();
+
+      // Assert
+      expect(result[0]).not.toHaveProperty('passwordHash');
+    });
+
+    it('returns join_date as an ISO string and omits joinDate', async () => {
+      // Arrange
+      mockPrisma.member.findMany.mockResolvedValue([ENRICHED_MEMBER_FIXTURE]);
+
+      // Act
+      const result = await service.findAll();
+
+      // Assert
+      expect(result[0].join_date).toBe(MEMBER_FIXTURE.joinDate.toISOString());
+      expect(result[0]).not.toHaveProperty('joinDate');
+    });
+
+    it('returns the fully transformed shape matching TRANSFORMED_MEMBER', async () => {
+      // Arrange
+      mockPrisma.member.findMany.mockResolvedValue([ENRICHED_MEMBER_FIXTURE]);
+
+      // Act
+      const result = await service.findAll();
+
+      // Assert — deep equality check on the full transformed object
+      expect(result[0]).toEqual(TRANSFORMED_MEMBER);
     });
   });
 
@@ -92,16 +189,25 @@ describe('MembersService', () => {
   // findOne(id)
   // -------------------------------------------------------------------------
   describe('findOne(id)', () => {
-    it('returns the member when the id exists', async () => {
+    it('returns the transformed member when the id exists', async () => {
       // Arrange
-      mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE);
+      mockPrisma.member.findUnique.mockResolvedValue(ENRICHED_MEMBER_FIXTURE);
 
       // Act
       const result = await service.findOne('member-1');
 
-      // Assert
-      expect(result).toEqual(MEMBER_FIXTURE);
-      expect(mockPrisma.member.findUnique).toHaveBeenCalledWith({ where: { id: 'member-1' } });
+      // Assert — must return the transformed shape, not the raw Prisma row
+      expect(result).toEqual(TRANSFORMED_MEMBER);
+      expect(mockPrisma.member.findUnique).toHaveBeenCalledWith({
+        where: { id: 'member-1' },
+        include: {
+          contributions: { select: { amount: true } },
+          eventPayments: {
+            where: { status: 'PENDING', event: { status: 'ACTIVE' } },
+            select: { amountDue: true, amountPaid: true },
+          },
+        },
+      });
     });
 
     it('throws NotFoundException when the id does not exist', async () => {
@@ -177,7 +283,8 @@ describe('MembersService', () => {
       // Arrange
       const updateDto = { name: 'Updated Name' };
       const updatedMember = { ...MEMBER_FIXTURE, name: 'Updated Name' };
-      mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE); // findOne check
+      // findOne now uses include — mock must return enriched fixture to satisfy the transform
+      mockPrisma.member.findUnique.mockResolvedValue(ENRICHED_MEMBER_FIXTURE);
       mockPrisma.member.update.mockResolvedValue(updatedMember);
 
       // Act
@@ -209,7 +316,8 @@ describe('MembersService', () => {
   describe('remove(id)', () => {
     it('deletes and returns the member when found', async () => {
       // Arrange
-      mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE); // findOne check
+      // findOne now uses include — mock must return enriched fixture to satisfy the transform
+      mockPrisma.member.findUnique.mockResolvedValue(ENRICHED_MEMBER_FIXTURE);
       mockPrisma.member.delete.mockResolvedValue(MEMBER_FIXTURE);
 
       // Act
@@ -239,7 +347,8 @@ describe('MembersService', () => {
     it('sets approvalStatus to APPROVED and status to ACTIVE when member found', async () => {
       // Arrange
       const approvedMember = { ...MEMBER_FIXTURE, approvalStatus: 'APPROVED', status: 'ACTIVE' };
-      mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE); // findOne check
+      // findOne now uses include — mock must return enriched fixture to satisfy the transform
+      mockPrisma.member.findUnique.mockResolvedValue(ENRICHED_MEMBER_FIXTURE);
       mockPrisma.member.update.mockResolvedValue(approvedMember);
 
       // Act
@@ -273,7 +382,8 @@ describe('MembersService', () => {
     it('updates the passwordHash to the default password hash when member found', async () => {
       // Arrange
       const updatedMember = { ...MEMBER_FIXTURE, passwordHash: 'hashed_password' };
-      mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE);
+      // findOne now uses include — mock must return enriched fixture to satisfy the transform
+      mockPrisma.member.findUnique.mockResolvedValue(ENRICHED_MEMBER_FIXTURE);
       mockPrisma.member.update.mockResolvedValue(updatedMember);
 
       // Act
@@ -311,6 +421,8 @@ describe('MembersService', () => {
 
     it('updates password when currentPassword matches the stored hash', async () => {
       // Arrange
+      // changePassword calls prisma.member.findUnique DIRECTLY (not this.findOne),
+      // so the mock can return the plain MEMBER_FIXTURE — no include needed.
       mockPrisma.member.findUnique.mockResolvedValue(MEMBER_FIXTURE);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       const updatedMember = { ...MEMBER_FIXTURE, passwordHash: 'hashed_password' };

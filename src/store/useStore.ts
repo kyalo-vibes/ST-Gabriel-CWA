@@ -76,6 +76,8 @@ interface StoreState {
   user: { name: string; email: string; role: string } | null;
   login: (email: string, password: string, accountType?: string) => Promise<boolean>;
   logout: () => void;
+  token: string | null;
+  setToken: (token: string | null) => void;
 
   // Theme
   theme: 'light' | 'dark';
@@ -184,7 +186,11 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
     }
   },
   logout: () => {
-    set({ isAuthenticated: false, user: null });
+    set({ isAuthenticated: false, user: null, token: null });
+  },
+  token: null,
+  setToken: (token) => {
+    set({ token });
   },
 
   // Theme

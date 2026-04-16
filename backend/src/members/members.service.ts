@@ -15,13 +15,44 @@ export class MembersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.member.findMany({ orderBy: { name: 'asc' } });
+    const members = await this.prisma.member.findMany({
+      include: {
+        contributions: { select: { amount: true } },
+        eventPayments: {
+          where: { status: 'PENDING', event: { status: 'ACTIVE' } },
+          select: { amountDue: true, amountPaid: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return members.map(({ joinDate, contributions, eventPayments, passwordHash, ...m }) => ({
+      ...m,
+      join_date: joinDate.toISOString(),
+      total_contributed: contributions.reduce((s, c) => s + c.amount, 0),
+      balance: eventPayments.reduce((s, p) => s + (p.amountDue - p.amountPaid), 0),
+    }));
   }
 
   async findOne(id: string) {
-    const member = await this.prisma.member.findUnique({ where: { id } });
+    const member = await this.prisma.member.findUnique({
+      where: { id },
+      include: {
+        contributions: { select: { amount: true } },
+        eventPayments: {
+          where: { status: 'PENDING', event: { status: 'ACTIVE' } },
+          select: { amountDue: true, amountPaid: true },
+        },
+      },
+    });
     if (!member) throw new NotFoundException(`Member ${id} not found`);
-    return member;
+    const { joinDate, contributions, eventPayments, passwordHash, ...m } = member;
+    return {
+      ...m,
+      join_date: joinDate.toISOString(),
+      total_contributed: contributions.reduce((s, c) => s + c.amount, 0),
+      balance: eventPayments.reduce((s, p) => s + (p.amountDue - p.amountPaid), 0),
+    };
   }
 
   async create(dto: CreateMemberDto) {
@@ -69,7 +100,8 @@ export class MembersService {
   }
 
   async changePassword(id: string, dto: ChangePasswordDto) {
-    const member = await this.findOne(id);
+    const member = await this.prisma.member.findUnique({ where: { id } });
+    if (!member) throw new NotFoundException(`Member ${id} not found`);
     const valid = await bcrypt.compare(dto.currentPassword, member.passwordHash);
     if (!valid) throw new UnauthorizedException('Current password is incorrect');
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);

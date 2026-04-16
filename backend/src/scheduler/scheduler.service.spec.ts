@@ -59,6 +59,10 @@ const PAYMENT_FIXTURE = {
   event: EVENT_FIXTURE,
 };
 
+// The enabled config that allows the job to run.
+// getHours is spied to return 8 in beforeEach, so hour: 8 means the guard passes.
+const ENABLED_CONFIG = { enabled: true, hour: 8 };
+
 describe('SchedulerService', () => {
   let service: SchedulerService;
   let mockPrisma: {
@@ -66,17 +70,24 @@ describe('SchedulerService', () => {
     contributionEvent: { findMany: jest.Mock };
     eventPayment: { findMany: jest.Mock };
     notification: { create: jest.Mock };
+    scheduleConfig: { findUnique: jest.Mock };
   };
   let mockWhatsapp: { sendIndividualMessages: jest.Mock };
   let mockConfig: { get: jest.Mock };
 
   beforeEach(async () => {
     // Arrange — fresh mock objects before every test so spy call counts never bleed
+
+    // Spy on Date.prototype.getHours to return a stable value (8) so the
+    // scheduleConfig hour guard always resolves predictably in the happy-path tests.
+    jest.spyOn(Date.prototype, 'getHours').mockReturnValue(8);
+
     mockPrisma = {
       member: { findMany: jest.fn() },
       contributionEvent: { findMany: jest.fn() },
       eventPayment: { findMany: jest.fn() },
       notification: { create: jest.fn() },
+      scheduleConfig: { findUnique: jest.fn().mockResolvedValue(ENABLED_CONFIG) },
     };
 
     mockWhatsapp = {
@@ -99,6 +110,14 @@ describe('SchedulerService', () => {
     service = module.get<SchedulerService>(SchedulerService);
 
     jest.clearAllMocks();
+
+    // Re-apply after clearAllMocks so the getHours spy stays active for the test.
+    jest.spyOn(Date.prototype, 'getHours').mockReturnValue(8);
+    mockPrisma.scheduleConfig.findUnique.mockResolvedValue(ENABLED_CONFIG);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   // -------------------------------------------------------------------------
@@ -167,6 +186,30 @@ describe('SchedulerService', () => {
       // Act & Assert — must resolve, not reject
       await expect(service.sendMonthlyReminders()).resolves.toBeUndefined();
       expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when config is disabled', async () => {
+      // Arrange
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: false, hour: 8 });
+
+      // Act
+      await service.sendMonthlyReminders();
+
+      // Assert — guard returned early, so member query was never made
+      expect(mockPrisma.member.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when current hour does not match config hour', async () => {
+      // Arrange — config says run at 10, but getHours returns 8
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: true, hour: 10 });
+
+      // Act
+      await service.sendMonthlyReminders();
+
+      // Assert
+      expect(mockPrisma.member.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
     });
   });
 
@@ -275,6 +318,30 @@ describe('SchedulerService', () => {
       await expect(service.sendDueSoonReminders()).resolves.toBeUndefined();
       // Second event's WhatsApp send still happened
       expect(mockWhatsapp.sendIndividualMessages).toHaveBeenCalledTimes(2);
+    });
+
+    it('does nothing when config is disabled', async () => {
+      // Arrange
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: false, hour: 8 });
+
+      // Act
+      await service.sendDueSoonReminders();
+
+      // Assert
+      expect(mockPrisma.contributionEvent.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when current hour does not match config hour', async () => {
+      // Arrange — config says run at 10, but getHours returns 8
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: true, hour: 10 });
+
+      // Act
+      await service.sendDueSoonReminders();
+
+      // Assert
+      expect(mockPrisma.contributionEvent.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
     });
   });
 
@@ -399,6 +466,30 @@ describe('SchedulerService', () => {
       await expect(service.sendOverdueReminders()).resolves.toBeUndefined();
       expect(mockWhatsapp.sendIndividualMessages).toHaveBeenCalledTimes(2);
     });
+
+    it('does nothing when config is disabled', async () => {
+      // Arrange
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: false, hour: 8 });
+
+      // Act
+      await service.sendOverdueReminders();
+
+      // Assert
+      expect(mockPrisma.contributionEvent.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when current hour does not match config hour', async () => {
+      // Arrange — config says run at 10, but getHours returns 8
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: true, hour: 10 });
+
+      // Act
+      await service.sendOverdueReminders();
+
+      // Assert
+      expect(mockPrisma.contributionEvent.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -507,6 +598,32 @@ describe('SchedulerService', () => {
       // Act & Assert — must resolve, not reject
       await expect(service.sendWeeklyDigest()).resolves.toBeUndefined();
       expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when config is disabled', async () => {
+      // Arrange
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: false, hour: 8 });
+      mockConfig.get.mockReturnValue('+254700000000');
+
+      // Act
+      await service.sendWeeklyDigest();
+
+      // Assert — guard returned early before even checking ADMIN_PHONE
+      expect(mockPrisma.eventPayment.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when current hour does not match config hour', async () => {
+      // Arrange — config says run at 10, but getHours returns 8
+      mockPrisma.scheduleConfig.findUnique.mockResolvedValue({ enabled: true, hour: 10 });
+      mockConfig.get.mockReturnValue('+254700000000');
+
+      // Act
+      await service.sendWeeklyDigest();
+
+      // Assert
+      expect(mockPrisma.eventPayment.findMany).not.toHaveBeenCalled();
+      expect(mockWhatsapp.sendIndividualMessages).not.toHaveBeenCalled();
     });
   });
 });
