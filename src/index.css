@@ -3937,3 +3937,48 @@ html {
     transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
   }
 }
+
+/* =========================================================================
+   App layout (raw CSS — appended because this project uses a pre-compiled
+   Tailwind v4 bundle with no compiler in the build pipeline, so new utility
+   classes like top-14 / pt-14 / lg:ml-64 would not produce any CSS).
+   ========================================================================= */
+
+.app-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5rem; /* 56px */
+  z-index: 60;
+}
+
+.app-sidebar {
+  position: fixed;
+  top: 3.5rem;            /* sits below navbar */
+  left: 0;
+  width: 16rem;           /* 256px */
+  height: calc(100vh - 3.5rem);
+  z-index: 50;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-sidebar.is-open {
+  transform: translateX(0);
+}
+
+.app-main {
+  padding-top: 3.5rem; /* clear fixed navbar on every breakpoint */
+}
+
+@media (min-width: 64rem) {
+  .app-sidebar {
+    transform: translateX(0); /* always visible on desktop */
+  }
+  .app-main {
+    margin-left: 16rem; /* clear fixed sidebar */
+  }
+}
+

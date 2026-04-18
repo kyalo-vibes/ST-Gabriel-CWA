@@ -9,14 +9,12 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar onMenuClick={() => setSidebarOpen(true)} />
-      <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 lg:ml-0">
-          <div className="p-6 md:p-8 lg:p-10 max-w-[1600px] mx-auto">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="app-main">
+        <div className="p-6 md:p-8 lg:p-10 max-w-[1600px] mx-auto">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }
