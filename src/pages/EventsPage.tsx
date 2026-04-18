@@ -209,7 +209,6 @@ export function EventsPage() {
                       {/* Action buttons */}
                       <div className="flex gap-2 pt-2">
                         <Button
-                          size="sm"
                           variant="outline"
                           className="flex-1"
                           onClick={() => navigate(`/events/${event.id}`)}
@@ -218,7 +217,6 @@ export function EventsPage() {
                           View Details
                         </Button>
                         <Button
-                          size="sm"
                           variant="outline"
                           className="flex-1"
                           onClick={() => setIsNotifyOpen(true)}

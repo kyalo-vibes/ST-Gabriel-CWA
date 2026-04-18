@@ -83,7 +83,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={() => onClose()}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
+                  'flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group',
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
@@ -96,7 +96,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     "h-5 w-5 transition-transform duration-200",
                     !isActive && "group-hover:scale-110"
                   )} />
-                  <span className="font-medium text-sm">{item.name}</span>
+                  <span className="font-medium text-base">{item.name}</span>
                   {item.name === 'Members' && pendingCount > 0 && (
                     <Badge 
                       variant="default" 

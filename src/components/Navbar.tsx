@@ -45,7 +45,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           </div>
           <div className="hidden md:block">
             <h1 className="text-sm font-semibold tracking-tight">CWA Thome Portal</h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               St. Gabriel CWA Management System
             </p>
           </div>

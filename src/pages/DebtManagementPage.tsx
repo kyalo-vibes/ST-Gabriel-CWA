@@ -402,7 +402,6 @@ export function DebtManagementPage() {
                 </div>
                 <div className="pt-3">
                   <Button
-                    size="sm"
                     className="w-full bg-[#1C3D5A] hover:bg-[#2A5A7A]"
                     disabled={sendingId === row.key}
                     onClick={() => handleSendReminder(row)}
