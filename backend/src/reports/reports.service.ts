@@ -6,58 +6,87 @@ export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
   async getSummary() {
-    const [totalMembers, totalContributions, totalExpenses, activeEvents] = await Promise.all([
-      this.prisma.member.count({ where: { approvalStatus: 'APPROVED' } }),
-      this.prisma.contribution.aggregate({ _sum: { amount: true } }),
-      this.prisma.expense.aggregate({ _sum: { amount: true } }),
-      this.prisma.contributionEvent.count({ where: { status: 'ACTIVE' } }),
-    ]);
+    const [totalMembers, activeMembers, totalContributions, totalExpenses, activeEvents, pendingPayments] =
+      await Promise.all([
+        this.prisma.member.count({ where: { approvalStatus: 'APPROVED' } }),
+        this.prisma.member.count({ where: { approvalStatus: 'APPROVED', status: 'ACTIVE' } }),
+        this.prisma.contribution.aggregate({ _sum: { amount: true } }),
+        this.prisma.expense.aggregate({ _sum: { amount: true } }),
+        this.prisma.contributionEvent.count({ where: { status: 'ACTIVE' } }),
+        this.prisma.eventPayment.findMany({
+          where: { status: 'PENDING', event: { status: 'ACTIVE' } },
+          select: { memberId: true, amountDue: true, amountPaid: true },
+        }),
+      ]);
 
     const income = totalContributions._sum.amount ?? 0;
     const expenses = totalExpenses._sum.amount ?? 0;
+    const totalOutstanding = pendingPayments.reduce((sum, p) => sum + (p.amountDue - p.amountPaid), 0);
+    const membersWithDebt = new Set(pendingPayments.map((p) => p.memberId)).size;
 
     return {
       totalMembers,
-      totalIncome: income,
+      activeMembers,
+      totalContributions: income,
       totalExpenses: expenses,
-      balance: income - expenses,
+      totalOutstanding,
+      membersWithDebt,
       activeEvents,
     };
   }
 
   async getMonthlyTrends() {
-    const yearAgo = new Date(new Date().setFullYear(new Date().getFullYear() - 1));
-
-    const [contributions, expenses] = await Promise.all([
+    const [contributions, expenses, members] = await Promise.all([
       this.prisma.contribution.findMany({
-        where: { date: { gte: yearAgo } },
         select: { amount: true, date: true },
         orderBy: { date: 'asc' },
       }),
       this.prisma.expense.findMany({
-        where: { date: { gte: yearAgo } },
         select: { amount: true, date: true },
         orderBy: { date: 'asc' },
       }),
+      this.prisma.member.findMany({
+        where: { approvalStatus: 'APPROVED' },
+        select: { joinDate: true },
+        orderBy: { joinDate: 'asc' },
+      }),
     ]);
 
-    const monthMap: Record<string, { month: string; income: number; expenses: number }> = {};
     const toMonthKey = (d: Date) =>
-      d.toLocaleDateString('en-KE', { year: 'numeric', month: 'short' });
+      d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+
+    const monthMap: Record<string, { month: string; income: number; expenses: number; members: number }> = {};
 
     for (const c of contributions) {
       const key = toMonthKey(new Date(c.date));
-      if (!monthMap[key]) monthMap[key] = { month: key, income: 0, expenses: 0 };
+      if (!monthMap[key]) monthMap[key] = { month: key, income: 0, expenses: 0, members: 0 };
       monthMap[key].income += c.amount;
     }
 
     for (const e of expenses) {
       const key = toMonthKey(new Date(e.date));
-      if (!monthMap[key]) monthMap[key] = { month: key, income: 0, expenses: 0 };
+      if (!monthMap[key]) monthMap[key] = { month: key, income: 0, expenses: 0, members: 0 };
       monthMap[key].expenses += e.amount;
     }
 
-    return Object.values(monthMap);
+    // Running cumulative member count per month
+    const membersByMonth: Record<string, number> = {};
+    for (const m of members) {
+      const key = toMonthKey(new Date(m.joinDate));
+      membersByMonth[key] = (membersByMonth[key] ?? 0) + 1;
+    }
+
+    // Sort all months chronologically, then compute running member total
+    const allKeys = [...new Set([...Object.keys(monthMap), ...Object.keys(membersByMonth)])].sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+    );
+
+    let runningMembers = 0;
+    return allKeys.map((key) => {
+      runningMembers += membersByMonth[key] ?? 0;
+      const entry = monthMap[key] ?? { month: key, income: 0, expenses: 0, members: 0 };
+      return { ...entry, month: key, members: runningMembers };
+    });
   }
 
   async getTopContributors() {

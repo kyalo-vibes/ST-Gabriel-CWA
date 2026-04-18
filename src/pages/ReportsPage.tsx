@@ -28,9 +28,11 @@ import { toast } from 'sonner@2.0.3';
 
 interface Summary {
   totalMembers: number;
-  totalIncome: number;
+  activeMembers: number;
+  totalContributions: number;
   totalExpenses: number;
-  balance: number;
+  totalOutstanding: number;
+  membersWithDebt: number;
   activeEvents: number;
 }
 
@@ -120,7 +122,7 @@ export function ReportsPage() {
         />
         <DashboardCard
           title="Total Income"
-          value={`KES ${(summary?.totalIncome ?? 0).toLocaleString()}`}
+          value={`KES ${(summary?.totalContributions ?? 0).toLocaleString()}`}
           icon={TrendingUp}
           description="All contributions"
         />
@@ -132,9 +134,9 @@ export function ReportsPage() {
         />
         <DashboardCard
           title="Outstanding"
-          value={`KES ${(summary?.balance ?? 0).toLocaleString()}`}
+          value={`KES ${(summary?.totalOutstanding ?? 0).toLocaleString()}`}
           icon={AlertCircle}
-          description="Pending balances"
+          description={`${summary?.membersWithDebt ?? 0} members`}
         />
       </div>
 

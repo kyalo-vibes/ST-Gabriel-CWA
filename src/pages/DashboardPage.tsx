@@ -43,10 +43,30 @@ export function DashboardPage() {
       reportsApi.getMonthlyTrends(),
       reportsApi.getTopContributors(),
     ])
-      .then(([summaryData, trendsData, topData]) => {
-        setSummary(summaryData);
-        setMonthlyTrends(trendsData);
-        setTopContributors(topData);
+      .then(([s, trends, top]) => {
+        setSummary({
+          totalMembers: s.totalMembers ?? 0,
+          activeMembers: s.activeMembers ?? s.totalMembers ?? 0,
+          totalContributions: s.totalContributions ?? s.totalIncome ?? 0,
+          totalExpenses: s.totalExpenses ?? 0,
+          totalOutstanding: s.totalOutstanding ?? s.balance ?? 0,
+          membersWithDebt: s.membersWithDebt ?? 0,
+        });
+        setMonthlyTrends(
+          trends.map((t: any) => ({
+            month: t.month,
+            contributions: t.contributions ?? t.income ?? 0,
+            expenses: t.expenses ?? 0,
+            members: t.members ?? 0,
+          })),
+        );
+        setTopContributors(
+          top.map((r: any) => ({
+            member_id: r.member_id ?? r.member?.id ?? '',
+            name: r.name ?? r.member?.name ?? '',
+            total: r.total ?? r.totalContributed ?? 0,
+          })),
+        );
       })
       .catch(() => {
         // fall through — static store data shown as fallback
