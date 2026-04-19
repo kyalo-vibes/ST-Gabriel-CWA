@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Search, Send, DollarSign, Users, AlertTriangle, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { notificationsApi } from '@/api/notifications';
-
-const BACKEND_URL = 'http://localhost:3001';
+import { membersApi } from '@/api/members';
+import { eventsApi } from '@/api/events';
+import { whatsappApi } from '@/api/whatsapp';
 
 const TYPE_COLORS: Record<string, string> = {
   Bereavement: 'bg-red-100 text-red-700',
@@ -36,7 +37,10 @@ interface DefaulterRow {
 }
 
 export function DebtManagementPage() {
-  const { events, eventPayments, members, addNotification } = useStore();
+  const {
+    events, eventPayments, members,
+    setMembers, setEvents, setEventPayments,
+  } = useStore();
 
   const [searchText, setSearchText] = useState('');
   const [selectedEventFilter, setSelectedEventFilter] = useState('all');
@@ -44,6 +48,37 @@ export function DebtManagementPage() {
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [freshMembers, freshEvents] = await Promise.all([
+          membersApi.getAll(),
+          eventsApi.getAll(),
+        ]);
+        if (cancelled) return;
+        setMembers(freshMembers);
+        setEvents(freshEvents);
+
+        const activeEvents = freshEvents.filter((e: { status: string }) => e.status === 'Active');
+        const paymentLists = await Promise.all(
+          activeEvents.map((e: { id: string }) => eventsApi.getPayments(e.id)),
+        );
+        if (cancelled) return;
+        setEventPayments(paymentLists.flat());
+      } catch (err) {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : 'Failed to load debt data';
+        setLoadError(message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [setMembers, setEvents, setEventPayments]);
 
   const today = new Date();
 
@@ -153,22 +188,13 @@ export function DebtManagementPage() {
     const message = buildMessage(row);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/whatsapp/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'individual',
-          recipients: [{ name: row.memberName, phone: row.memberPhone, balance: row.amountOwed }],
-          message,
-          notificationType: 'Payment Reminder',
-          targetGroup: 'Custom',
-        }),
+      await whatsappApi.send({
+        mode: 'individual',
+        recipients: [{ name: row.memberName, phone: row.memberPhone, balance: row.amountOwed }],
+        message,
+        notificationType: 'Payment Reminder',
+        targetGroup: 'Custom',
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to send');
-      }
 
       const payload = {
         memberId: row.memberId,
@@ -179,17 +205,6 @@ export function DebtManagementPage() {
         recipientCount: 1,
       };
       await notificationsApi.create(payload);
-      addNotification({
-        member_id: row.memberId,
-        message,
-        date: new Date().toISOString().split('T')[0],
-        type: 'Payment Reminder',
-        status: 'Sent',
-        targetGroup: row.memberName,
-        contributionType: row.eventTitle,
-        recipientCount: 1,
-      });
-
       toast.success(`Reminder sent to ${row.memberName}`);
     } catch {
       toast.error('WhatsApp not connected. Start the backend and scan QR code.');
@@ -207,22 +222,13 @@ export function DebtManagementPage() {
     const message = buildMessage(selected[0]);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/whatsapp/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'individual',
-          recipients: selected.map(r => ({ name: r.memberName, phone: r.memberPhone, balance: r.amountOwed })),
-          message,
-          notificationType: 'Payment Reminder',
-          targetGroup: 'Defaulters',
-        }),
+      await whatsappApi.send({
+        mode: 'individual',
+        recipients: selected.map(r => ({ name: r.memberName, phone: r.memberPhone, balance: r.amountOwed })),
+        message,
+        notificationType: 'Payment Reminder',
+        targetGroup: 'Defaulters',
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to send');
-      }
 
       const payload = {
         message,
@@ -232,17 +238,6 @@ export function DebtManagementPage() {
         recipientCount: selected.length,
       };
       await notificationsApi.create(payload);
-      addNotification({
-        member_id: 'bulk',
-        message,
-        date: new Date().toISOString().split('T')[0],
-        type: 'Payment Reminder',
-        status: 'Sent',
-        targetGroup: 'Defaulters',
-        contributionType: 'Multiple Events',
-        recipientCount: selected.length,
-      });
-
       toast.success(`Reminders sent to ${selected.length} members`);
       setSelectedRowIds(new Set());
     } catch {
@@ -251,6 +246,24 @@ export function DebtManagementPage() {
       setIsBulkSending(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 text-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#1C3D5A] mb-2" />
+        <p className="text-sm text-gray-500">Loading debt data...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6 text-center py-16">
+        <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+        <p className="text-sm text-gray-700 dark:text-gray-300">{loadError}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

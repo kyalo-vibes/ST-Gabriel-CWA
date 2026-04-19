@@ -19,10 +19,20 @@ import { EventDetailPage } from './pages/EventDetailPage';
 import { DebtManagementPage } from './pages/DebtManagementPage';
 import { useEffect } from 'react';
 
+function getRoleFromToken(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const theme = useStore((state) => state.theme);
   const isAuthenticated = useStore((state) => state.isAuthenticated);
-  const user = useStore((state) => state.user);
+  const token = useStore((state) => state.token);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -31,8 +41,9 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
-  
-  const isAdmin = user?.role === 'Administrator';
+
+  const role = getRoleFromToken(token);
+  const isAdmin = role === 'Administrator';
 
   return (
     <BrowserRouter>

@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsDateString, IsEnum, IsOptional, IsIn, Min } from 'class-validator';
 
 enum EventType {
   BEREAVEMENT = 'BEREAVEMENT',
@@ -10,10 +10,12 @@ enum EventType {
 }
 
 export class CreateEventDto {
-  @IsString() title: string;
+  @IsString() @IsNotEmpty() title: string;
   @IsEnum(EventType) type: EventType;
-  @IsNumber() amountPerMember: number;
+  @IsNumber() @Min(0) amountPerMember: number;
   @IsDateString() dueDate: string;
-  @IsOptional() @IsString() targetJumuia?: string;
+  @IsOptional()
+  @IsIn(['All', 'ST_PETER', 'ST_PAUL', 'ST_JOSEPH', 'ST_MARY'])
+  targetJumuia?: string;
   @IsOptional() @IsString() description?: string;
 }

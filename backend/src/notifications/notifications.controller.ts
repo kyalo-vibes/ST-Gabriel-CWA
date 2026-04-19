@@ -9,7 +9,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Administrator')
   @Get()
   findAll() {
     return this.notificationsService.findAll();

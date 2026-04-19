@@ -1,9 +1,10 @@
-import { IsString, IsNumber, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsDateString, IsIn, IsNotEmpty, Min } from 'class-validator';
 
 export class CreateExpenseDto {
-  @IsString() description: string;
-  @IsNumber() amount: number;
-  @IsString() category: string;
+  @IsString() @IsNotEmpty() description: string;
+  @IsNumber() @Min(0) amount: number;
+  @IsIn(['Welfare', 'Development', 'Project', 'Administrative', 'Event', 'Other'])
+  category: string;
   @IsDateString() date: string;
-  @IsString() reference: string;
+  @IsString() @IsNotEmpty() reference: string;
 }

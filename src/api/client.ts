@@ -13,6 +13,9 @@ export async function apiFetch(path: string, options?: RequestInit) {
     },
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      useStore.getState().logout();
+    }
     const body = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(body.message || res.statusText);
   }

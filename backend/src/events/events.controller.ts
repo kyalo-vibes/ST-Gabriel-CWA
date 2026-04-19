@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { MarkPaidDto } from './dto/mark-paid.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -38,8 +39,8 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id/payments')
-  getPayments(@Param('id') id: string) {
-    return this.eventsService.getPayments(id);
+  getPayments(@Param('id') id: string, @Request() req) {
+    return this.eventsService.getPayments(id, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -48,7 +49,8 @@ export class EventsController {
   markAsPaid(
     @Param('eventId') eventId: string,
     @Param('memberId') memberId: string,
+    @Body() dto: MarkPaidDto,
   ) {
-    return this.eventsService.markAsPaid(eventId, memberId);
+    return this.eventsService.markAsPaid(eventId, memberId, dto);
   }
 }

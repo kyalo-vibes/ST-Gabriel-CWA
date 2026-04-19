@@ -59,7 +59,11 @@ export class WhatsAppService implements OnModuleInit {
 
         if (shouldReconnect) {
           this.connectionStatus = 'loading';
-          await this.initializeBaileys();
+          this.sock?.ev.removeAllListeners();
+          this.sock?.end(undefined);
+          await this.initializeBaileys().catch(() =>
+            setTimeout(() => this.initializeBaileys(), 5000)
+          );
         } else {
           this.connectionStatus = 'disconnected';
         }
@@ -100,6 +104,11 @@ export class WhatsAppService implements OnModuleInit {
     let failed = 0;
 
     for (const recipient of recipients) {
+      if (!recipient.phone?.trim()) {
+        this.logger.warn(`Skipping recipient ${recipient.name} — missing phone number`);
+        failed++;
+        continue;
+      }
       try {
         const jid = recipient.phone.replace('+', '') + '@s.whatsapp.net';
         const text = messageTemplate

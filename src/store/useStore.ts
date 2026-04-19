@@ -1,12 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { membersData } from '../data/members';
-import { contributionsData } from '../data/contributions';
-import { notificationsData } from '../data/notifications';
 import { reportsData } from '../data/reports';
 import { savedFiltersData } from '../data/filters';
-import { expensesData } from '../data/expenses';
-import { eventsData, eventPaymentsData } from '../data/events';
 import type { ContributionEvent, EventPayment } from '../data/events';
 
 interface Member {
@@ -73,7 +68,7 @@ interface SavedFilter {
 interface StoreState {
   // Auth
   isAuthenticated: boolean;
-  user: { name: string; email: string; role: string } | null;
+  user: { id: string; name: string; email: string; role: string } | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   token: string | null;
@@ -146,6 +141,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
         isAuthenticated: true,
         token: data.access_token,
         user: {
+          id: data.user.sub,
           name: data.user.name,
           email: data.user.email,
           role: data.user.role,
@@ -157,7 +153,17 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
     }
   },
   logout: () => {
-    set({ isAuthenticated: false, user: null, token: null });
+    set({
+      isAuthenticated: false,
+      user: null,
+      token: null,
+      members: [],
+      contributions: [],
+      expenses: [],
+      notifications: [],
+      events: [],
+      eventPayments: [],
+    });
   },
   token: null,
   setToken: (token) => {
@@ -171,7 +177,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   },
 
   // Members
-  members: membersData as Member[],
+  members: [],
   setMembers: (members) => set({ members }),
   addMember: (member) => {
     const newMember = {
@@ -195,7 +201,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   },
 
   // Contributions
-  contributions: contributionsData as Contribution[],
+  contributions: [],
   setContributions: (contributions) => set({ contributions }),
   addContribution: (contribution) => {
     const newContribution = {
@@ -209,7 +215,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   },
 
   // Expenses
-  expenses: expensesData as Expense[],
+  expenses: [],
   setExpenses: (expenses) => set({ expenses }),
   addExpense: (expense) => {
     const newExpense = {
@@ -220,7 +226,7 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   },
 
   // Notifications
-  notifications: notificationsData as Notification[],
+  notifications: [],
   setNotifications: (notifications) => set({ notifications }),
   addNotification: (notification) => {
     const newNotification = {
@@ -258,8 +264,8 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   reports: reportsData,
 
   // Events
-  events: eventsData as ContributionEvent[],
-  eventPayments: eventPaymentsData as EventPayment[],
+  events: [],
+  eventPayments: [],
   setEvents: (events) => set({ events }),
   setEventPayments: (payments) => set({ eventPayments: payments }),
 
@@ -317,4 +323,12 @@ export const useStore = create<StoreState>()(persist((set, get) => ({
   // WhatsApp Groups
   approvedGroups: [],
   setApprovedGroups: (groups) => set({ approvedGroups: groups }),
-}), { name: 'cwa-store' }));
+}), {
+  name: 'cwa-store',
+  partialize: (state) => ({
+    theme: state.theme,
+    token: state.token,
+    user: state.user,
+    isAuthenticated: state.isAuthenticated,
+  }),
+}));

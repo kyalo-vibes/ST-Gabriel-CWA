@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +19,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
     PrismaModule,
     AuthModule,
     MembersModule,
@@ -29,5 +32,6 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     WhatsAppModule,
     SchedulerModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

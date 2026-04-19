@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsDateString, IsEnum } from 'class-validator';
+import { IsString, IsEmail, IsDateString, IsEnum, IsOptional, MinLength, IsNotEmpty, Matches } from 'class-validator';
 
 enum Jumuia {
   ST_PETER = 'ST_PETER',
@@ -8,9 +8,10 @@ enum Jumuia {
 }
 
 export class CreateMemberDto {
-  @IsString() name: string;
-  @IsString() phone: string;
+  @IsString() @IsNotEmpty() name: string;
+  @IsString() @IsNotEmpty() @Matches(/^\+254\d{9}$/, { message: 'Phone must be in format +254XXXXXXXXX' }) phone: string;
   @IsEmail() email: string;
   @IsDateString() joinDate: string;
   @IsEnum(Jumuia) jumuia: Jumuia;
+  @IsOptional() @IsString() @MinLength(8) password?: string;
 }

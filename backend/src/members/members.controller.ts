@@ -8,7 +8,9 @@ import {
   Param,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -21,7 +23,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Administrator')
   @Get()
   findAll() {
     return this.membersService.findAll();
@@ -32,18 +36,24 @@ export class MembersController {
     return this.membersService.create(dto);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @Request() req) {
+    if (req.user.role === 'Member' && req.user.id !== id) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.membersService.findOne(id);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   @Patch('me/password')
   changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
-    return this.membersService.changePassword(req.user.sub, dto);
+    return this.membersService.changePassword(req.user.id, dto);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Administrator')
   @Patch(':id/approve')
@@ -51,6 +61,7 @@ export class MembersController {
     return this.membersService.approve(id);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Administrator')
   @Patch(':id/reset-password')
@@ -58,6 +69,7 @@ export class MembersController {
     return this.membersService.resetPassword(id);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Administrator')
   @Patch(':id')
@@ -65,6 +77,7 @@ export class MembersController {
     return this.membersService.update(id, dto);
   }
 
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Administrator')
   @Delete(':id')

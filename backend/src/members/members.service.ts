@@ -61,7 +61,7 @@ export class MembersService {
     });
     if (existing) throw new BadRequestException('Phone or email already registered');
 
-    const passwordHash = await bcrypt.hash('CWA2026', 10);
+    const passwordHash = await bcrypt.hash(dto.password || 'CWA2026', 10);
     return this.prisma.member.create({
       data: {
         ...dto,

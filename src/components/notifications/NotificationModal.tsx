@@ -8,6 +8,8 @@ import { Send } from 'lucide-react';
 import { MessagePreview } from './MessagePreview';
 import { RecipientSummary } from './RecipientSummary';
 import { useStore } from '../../store/useStore';
+import { whatsappApi } from '../../api/whatsapp';
+import { membersApi } from '../../api/members';
 import { toast } from 'sonner@2.0.3';
 
 interface NotificationModalProps {
@@ -24,7 +26,7 @@ const messageTemplates = {
 };
 
 export function NotificationModal({ open, onOpenChange }: NotificationModalProps) {
-  const { members, addNotification, activeFilters, approvedGroups } = useStore();
+  const { members, setMembers, addNotification, activeFilters, approvedGroups } = useStore();
   const [notificationType, setNotificationType] = useState('Contribution Reminder');
   const [targetGroup, setTargetGroup] = useState('All Members');
   const [contributionType, setContributionType] = useState('');
@@ -35,6 +37,11 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
   useEffect(() => {
     setMessage(messageTemplates[notificationType as keyof typeof messageTemplates] || '');
   }, [notificationType]);
+
+  useEffect(() => {
+    if (!open) return;
+    membersApi.getAll().then(setMembers).catch(() => {});
+  }, [open, setMembers]);
 
   // Auto-select first approved group when available
   useEffect(() => {
@@ -107,13 +114,7 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
               targetGroup,
             };
 
-      const res = await fetch('http://localhost:3001/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to send message');
+      const data = await whatsappApi.send(body as Record<string, unknown>);
 
       addNotification({
         member_id: 'bulk',
@@ -233,7 +234,7 @@ export function NotificationModal({ open, onOpenChange }: NotificationModalProps
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All Members">All Members</SelectItem>
+                    {sendMode !== 'individual' && <SelectItem value="All Members">All Members</SelectItem>}
                     <SelectItem value="Active Members">Active Members</SelectItem>
                     <SelectItem value="Inactive Members">Inactive Members</SelectItem>
                     <SelectItem value="Defaulters">Defaulters (Outstanding Balance)</SelectItem>

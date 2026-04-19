@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { contributionsApi } from '../api/contributions';
 import { expensesApi } from '../api/expenses';
+import { membersApi } from '@/api/members';
 import { DataTable } from '../components/DataTable';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
@@ -20,24 +21,26 @@ export function ContributionsPage() {
   const {
     contributions,
     members,
-    addContribution,
     expenses,
-    addExpense,
     setContributions,
     setExpenses,
+    setMembers,
   } = useStore();
   const [isContributionDialogOpen, setIsContributionDialogOpen] = useState(false);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+  const [savingContribution, setSavingContribution] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
 
   useEffect(() => {
-    Promise.all([contributionsApi.getAll(), expensesApi.getAll()])
-      .then(([contribs, exps]) => {
+    Promise.all([contributionsApi.getAll(), expensesApi.getAll(), membersApi.getAll()])
+      .then(([contribs, exps, mems]) => {
         setContributions(contribs);
         setExpenses(exps);
+        setMembers(mems);
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load data'));
-  }, [setContributions, setExpenses]);
+  }, [setContributions, setExpenses, setMembers]);
   const [contributionFormData, setContributionFormData] = useState({
     member_id: '',
     amount: '',
@@ -81,22 +84,17 @@ export function ContributionsPage() {
 
   const handleContributionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingContribution(true);
     try {
-      const created = await contributionsApi.create({
+      await contributionsApi.create({
         memberId: contributionFormData.member_id,
         amount: parseFloat(contributionFormData.amount),
         type: contributionFormData.type,
         date: contributionFormData.date,
         reference: contributionFormData.reference,
       });
-      addContribution({
-        member_id: created.memberId ?? created.member_id,
-        amount: created.amount,
-        type: created.type,
-        date: created.date,
-        reference: created.reference,
-        status: created.status,
-      });
+      const fresh = await contributionsApi.getAll();
+      setContributions(fresh);
       toast.success('Contribution added successfully!');
       setIsContributionDialogOpen(false);
       setContributionFormData({
@@ -108,27 +106,24 @@ export function ContributionsPage() {
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add contribution');
+    } finally {
+      setSavingContribution(false);
     }
   };
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingExpense(true);
     try {
-      const created = await expensesApi.create({
+      await expensesApi.create({
         description: expenseFormData.description,
         amount: parseFloat(expenseFormData.amount),
         category: expenseFormData.category,
         date: expenseFormData.date,
         reference: expenseFormData.reference,
       });
-      addExpense({
-        description: created.description,
-        amount: created.amount,
-        category: created.category,
-        date: created.date,
-        reference: created.reference,
-        status: created.status,
-      });
+      const fresh = await expensesApi.getAll();
+      setExpenses(fresh);
       toast.success('Expense added successfully!');
       setIsExpenseDialogOpen(false);
       setExpenseFormData({
@@ -140,6 +135,8 @@ export function ContributionsPage() {
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add expense');
+    } finally {
+      setSavingExpense(false);
     }
   };
 
@@ -351,7 +348,7 @@ export function ContributionsPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                  <Button type="submit" disabled={savingContribution} className="bg-green-600 hover:bg-green-700">
                     Add Contribution
                   </Button>
                 </div>
@@ -440,7 +437,7 @@ export function ContributionsPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                  <Button type="submit" disabled={savingExpense} className="bg-red-600 hover:bg-red-700">
                     Add Expense
                   </Button>
                 </div>

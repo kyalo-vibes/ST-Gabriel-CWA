@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { notificationsApi } from '@/api/notifications';
+import { whatsappApi } from '@/api/whatsapp';
+import { membersApi } from '@/api/members';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -8,8 +10,6 @@ import { Send, Bell, MessageSquare, Wifi, WifiOff, Loader2, RefreshCw } from 'lu
 import { NotificationModal } from '../components/notifications/NotificationModal';
 import { NotificationHistory } from '../components/notifications/NotificationHistory';
 import { toast } from 'sonner@2.0.3';
-
-const BACKEND_URL = 'http://localhost:3001';
 
 function WhatsAppStatusBadge() {
   const [status, setStatus] = useState<'loading' | 'qr' | 'connected' | 'disconnected'>('loading');
@@ -20,13 +20,11 @@ function WhatsAppStatusBadge() {
 
   const poll = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/whatsapp/status`);
-      const data = await res.json();
+      const data = await whatsappApi.getStatus();
       setStatus(data.status);
 
       if (data.status === 'qr') {
-        const qrRes = await fetch(`${BACKEND_URL}/whatsapp/qr`);
-        const qrData = await qrRes.json();
+        const qrData = await whatsappApi.getQr();
         setQrCode(qrData.qr);
       } else {
         setQrCode(null);
@@ -159,6 +157,22 @@ export function NotificationsPage() {
 
   const handleResend = async (notification: any) => {
     try {
+      // Best-effort WhatsApp resend for individual notifications only
+      if (notification.member_id && notification.member_id !== 'bulk') {
+        const member = await membersApi.getOne(notification.member_id).catch(() => null);
+        if (member?.phone) {
+          await whatsappApi
+            .send({
+              mode: 'individual',
+              recipients: [{ name: member.name, phone: member.phone, balance: 0 }],
+              message: notification.message,
+              notificationType: notification.type,
+              targetGroup: notification.targetGroup ?? 'All',
+            })
+            .catch(() => toast.warning('WhatsApp send failed — notification still logged.'));
+        }
+      }
+
       await notificationsApi.create({
         memberId: notification.member_id === 'bulk' ? undefined : notification.member_id,
         message: notification.message,
@@ -177,9 +191,9 @@ export function NotificationsPage() {
         contributionType: notification.contributionType,
         recipientCount: notification.recipientCount,
       });
-      toast.success('Notification logged successfully!');
+      toast.success('Notification resent!');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to log notification');
+      toast.error(err instanceof Error ? err.message : 'Failed to resend notification');
     }
   };
 

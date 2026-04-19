@@ -87,28 +87,30 @@ export function LoginPage() {
               </div>
             </form>
 
-            <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-              <p className="text-xs font-medium mb-2 text-blue-900 dark:text-blue-200">Demo Credentials</p>
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => { setEmail('admin@stgabriel.org'); setPassword(''); }}
-                  className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
-                >
-                  <span className="font-medium">Admin:</span>{' '}
-                  <span className="font-mono">admin@stgabriel.org</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEmail('monicah.wambui@gmail.com'); setPassword('CWA2026'); }}
-                  className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
-                >
-                  <span className="font-medium">Member (Monicah Wambui):</span>{' '}
-                  <span className="font-mono">monicah.wambui@gmail.com</span>{' / CWA2026'}
-                </button>
+            {import.meta.env.DEV && (
+              <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <p className="text-xs font-medium mb-2 text-blue-900 dark:text-blue-200">Demo Credentials</p>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('admin@stgabriel.org'); setPassword(''); }}
+                    className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                  >
+                    <span className="font-medium">Admin:</span>{' '}
+                    <span className="font-mono">admin@stgabriel.org</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail('monicah.wambui@gmail.com'); setPassword('CWA2026'); }}
+                    className="w-full text-left text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                  >
+                    <span className="font-medium">Member (Monicah Wambui):</span>{' '}
+                    <span className="font-mono">monicah.wambui@gmail.com</span>{' / CWA2026'}
+                  </button>
+                </div>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">Click a row to auto-fill credentials.</p>
               </div>
-              <p className="text-xs text-blue-500 dark:text-blue-400 mt-2">Click a row to auto-fill credentials.</p>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

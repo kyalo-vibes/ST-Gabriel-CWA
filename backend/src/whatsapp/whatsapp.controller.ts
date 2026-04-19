@@ -1,8 +1,13 @@
-import { Controller, Get, Post, Body, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, NotFoundException, UseGuards } from '@nestjs/common';
 import { WhatsAppService } from './whatsapp.service';
 import { SendMessageDto } from './dto/send-message.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('whatsapp')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('Administrator')
 export class WhatsAppController {
   constructor(private readonly whatsAppService: WhatsAppService) {}
 

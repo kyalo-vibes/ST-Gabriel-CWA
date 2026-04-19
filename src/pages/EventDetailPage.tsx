@@ -1,8 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useStore } from '../store/useStore';
 import { eventsApi } from '@/api/events';
 import type { ContributionEvent, EventPayment } from '../data/events';
+
+type ApiPayment = EventPayment & {
+  member?: { id: string; name: string; phone: string; jumuia: string };
+};
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -24,12 +27,13 @@ const TYPE_COLORS: Record<string, string> = {
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { members } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   const [event, setEvent] = useState<ContributionEvent | null>(null);
-  const [payments, setPayments] = useState<EventPayment[]>([]);
+  const [payments, setPayments] = useState<ApiPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [markingPaidIds, setMarkingPaidIds] = useState<Set<string>>(new Set());
+  const [closingEvent, setClosingEvent] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,11 +49,7 @@ export function EventDetailPage() {
   const stats = useMemo(() => {
     if (!event) return null;
 
-    const targetedCount = members.filter(m => {
-      if (m.approvalStatus !== 'Approved') return false;
-      if (event.targetJumuia === 'All') return true;
-      return m.jumuia === event.targetJumuia;
-    }).length;
+    const targetedCount = payments.length;
     const totalExpected = targetedCount * event.amountPerMember;
     const totalCollected = payments
       .filter(ep => ep.status === 'Paid')
@@ -59,7 +59,7 @@ export function EventDetailPage() {
     const percentage = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
 
     return { targetedCount, totalExpected, totalCollected, paidCount, pendingCount, percentage };
-  }, [event, payments, members]);
+  }, [event, payments]);
 
   if (loading) {
     return <div className="py-12 text-center text-gray-500">Loading event...</div>;
@@ -80,11 +80,12 @@ export function EventDetailPage() {
     );
   }
 
-  // Enrich payments with member data for the table, then filter by search
-  const enrichedPayments = payments.map(ep => {
-    const member = members.find(m => m.id === ep.memberId);
-    return { ...ep, memberName: member?.name ?? 'Unknown', memberJumuia: member?.jumuia ?? '' };
-  });
+  // Enrich payments with member data from API-included relation
+  const enrichedPayments = payments.map(ep => ({
+    ...ep,
+    memberName: ep.member?.name ?? 'Unknown',
+    memberJumuia: ep.member?.jumuia ?? '',
+  }));
 
   const filteredPayments = searchTerm
     ? enrichedPayments.filter(ep => ep.memberName.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -92,6 +93,7 @@ export function EventDetailPage() {
 
   const handleMarkPaid = async (memberId: string, memberName: string) => {
     if (!id) return;
+    setMarkingPaidIds(prev => new Set(prev).add(memberId));
     try {
       await eventsApi.markPaid(id, memberId);
       const updated = await eventsApi.getPayments(id);
@@ -99,17 +101,22 @@ export function EventDetailPage() {
       toast.success(`${memberName} marked as paid!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to mark payment');
+    } finally {
+      setMarkingPaidIds(prev => { const s = new Set(prev); s.delete(memberId); return s; });
     }
   };
 
   const handleCloseEvent = async () => {
     if (!id) return;
+    setClosingEvent(true);
     try {
       const updated = await eventsApi.update(id, { status: 'CLOSED' });
       setEvent(updated);
       toast.success('Event has been closed.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to close event');
+    } finally {
+      setClosingEvent(false);
     }
   };
 
@@ -145,7 +152,7 @@ export function EventDetailPage() {
                 Notify Pending
               </Button>
               {event.status === 'Active' && (
-                <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCloseEvent}>
+                <Button variant="outline" disabled={closingEvent} className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCloseEvent}>
                   <Lock className="h-4 w-4 mr-2" />
                   Close Event
                 </Button>
@@ -249,6 +256,7 @@ export function EventDetailPage() {
                   <div className="pt-3">
                     <Button
                       size="sm"
+                      disabled={markingPaidIds.has(ep.memberId)}
                       className="w-full bg-green-600 hover:bg-green-700"
                       onClick={() => handleMarkPaid(ep.memberId, ep.memberName)}
                     >
@@ -294,6 +302,7 @@ export function EventDetailPage() {
                       {ep.status === 'Pending' && event.status === 'Active' ? (
                         <Button
                           size="sm"
+                          disabled={markingPaidIds.has(ep.memberId)}
                           className="bg-green-600 hover:bg-green-700"
                           onClick={() => handleMarkPaid(ep.memberId, ep.memberName)}
                         >

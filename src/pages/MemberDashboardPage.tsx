@@ -1,16 +1,73 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useStore } from '../store/useStore';
-import { Users, Coins, TrendingUp, Calendar, DollarSign, User } from 'lucide-react';
+import { membersApi } from '@/api/members';
+import { contributionsApi } from '@/api/contributions';
+import { Coins, TrendingUp, Calendar, DollarSign, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 
+interface MemberProfile {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  join_date: string;
+  total_contributed: number;
+  balance: number;
+  status: string;
+  jumuia: string;
+}
+
+interface MemberContribution {
+  id: string;
+  member_id: string;
+  amount: number;
+  type: string;
+  date: string;
+  reference: string;
+  status: string;
+}
+
 export function MemberDashboardPage() {
-  const { user, members, contributions } = useStore();
-  
-  // Find current member's data
-  const currentMember = members.find(m => m.email === user?.email);
-  
-  if (!currentMember) {
+  const user = useStore((state) => state.user);
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [contributions, setContributions] = useState<MemberContribution[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [profileData, contribData] = await Promise.all([
+          membersApi.getOne(user.id),
+          contributionsApi.getByMember(user.id),
+        ]);
+        if (cancelled) return;
+        setProfile(profileData);
+        setContributions(contribData);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <p className="text-gray-500">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -20,19 +77,8 @@ export function MemberDashboardPage() {
     );
   }
 
-  // Get member's contributions
-  const memberContributions = contributions.filter(c => c.member_id === currentMember.id);
-  
-  // Calculate stats
-  const totalMembers = members.filter(m => m.status === 'Active').length;
-  const totalOrgContributions = members.reduce((sum, m) => sum + m.total_contributed, 0);
-  const avgContribution = totalOrgContributions / totalMembers;
-  const memberPercentile = currentMember.total_contributed > avgContribution ? 
-    Math.round((currentMember.total_contributed / avgContribution) * 100) : 
-    Math.round((currentMember.total_contributed / avgContribution) * 100);
-
   // Recent contributions (last 5)
-  const recentContributions = memberContributions
+  const recentContributions = [...contributions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
@@ -40,7 +86,7 @@ export function MemberDashboardPage() {
     <div className="p-4 md:p-6 space-y-6">
       {/* Welcome Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl text-[#1C3D5A] dark:text-white">Welcome, {currentMember.name.split(' ')[0]}!</h1>
+        <h1 className="text-3xl text-[#1C3D5A] dark:text-white">Welcome, {profile.name.split(' ')[0]}!</h1>
         <p className="text-gray-600 dark:text-gray-400">Here's an overview of your CWA membership and contributions</p>
       </div>
 
@@ -52,7 +98,7 @@ export function MemberDashboardPage() {
             <Coins className="h-4 w-4 text-[#D4AF37]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">KES {currentMember.total_contributed.toLocaleString()}</div>
+            <div className="text-2xl">KES {profile.total_contributed.toLocaleString()}</div>
             <p className="text-xs text-gray-500 mt-1">Lifetime contributions</p>
           </CardContent>
         </Card>
@@ -63,9 +109,9 @@ export function MemberDashboardPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">KES {currentMember.balance.toLocaleString()}</div>
+            <div className="text-2xl">KES {profile.balance.toLocaleString()}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {currentMember.balance > 0 ? 'Outstanding balance' : 'No balance'}
+              {profile.balance > 0 ? 'Outstanding balance' : 'No balance'}
             </p>
           </CardContent>
         </Card>
@@ -76,21 +122,19 @@ export function MemberDashboardPage() {
             <Calendar className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{new Date(currentMember.join_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+            <div className="text-2xl">{new Date(profile.join_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
             <p className="text-xs text-gray-500 mt-1">Join date</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Contribution Rank</CardTitle>
+            <CardTitle className="text-sm">Contributions Logged</CardTitle>
             <TrendingUp className="h-4 w-4 text-[#1C3D5A]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{memberPercentile}%</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {currentMember.total_contributed > avgContribution ? 'Above average' : 'Of average'}
-            </p>
+            <div className="text-2xl">{contributions.length}</div>
+            <p className="text-xs text-gray-500 mt-1">Total records on file</p>
           </CardContent>
         </Card>
       </div>
@@ -107,25 +151,25 @@ export function MemberDashboardPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm text-gray-500">Full Name</label>
-              <p className="font-medium">{currentMember.name}</p>
+              <p className="font-medium">{profile.name}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Email</label>
-              <p className="font-medium">{currentMember.email}</p>
+              <p className="font-medium">{profile.email}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Phone</label>
-              <p className="font-medium">{currentMember.phone}</p>
+              <p className="font-medium">{profile.phone}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Jumuia</label>
-              <p className="font-medium">{currentMember.jumuia}</p>
+              <p className="font-medium">{profile.jumuia}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
               <div className="mt-1">
-                <Badge variant={currentMember.status === 'Active' ? 'default' : 'secondary'}>
-                  {currentMember.status}
+                <Badge variant={profile.status === 'Active' ? 'default' : 'secondary'}>
+                  {profile.status}
                 </Badge>
               </div>
             </div>
@@ -177,43 +221,6 @@ export function MemberDashboardPage() {
         </Card>
       </div>
 
-      {/* Organization Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Organization Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
-              <label className="text-sm text-gray-500">Total Members</label>
-              <p className="text-2xl font-medium mt-1">{totalMembers}</p>
-              <Progress value={100} className="mt-2 h-2" />
-              <p className="text-xs text-gray-500 mt-1">Active members in our community</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Total Contributions</label>
-              <p className="text-2xl font-medium mt-1">KES {totalOrgContributions.toLocaleString()}</p>
-              <Progress value={75} className="mt-2 h-2" />
-              <p className="text-xs text-gray-500 mt-1">Collective contributions</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Average Contribution</label>
-              <p className="text-2xl font-medium mt-1">KES {Math.round(avgContribution).toLocaleString()}</p>
-              <Progress 
-                value={Math.min((currentMember.total_contributed / avgContribution) * 100, 100)} 
-                className="mt-2 h-2" 
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                You're at {memberPercentile}% of average
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Quick Stats by Contribution Type */}
       <Card>
         <CardHeader>
@@ -222,14 +229,14 @@ export function MemberDashboardPage() {
         <CardContent>
           <div className="space-y-4">
             {['Monthly', 'Special', 'Project', 'Event'].map((type) => {
-              const typeContributions = memberContributions.filter(c => c.type === type);
+              const typeContributions = contributions.filter(c => c.type === type);
               const typeTotal = typeContributions.reduce((sum, c) => sum + c.amount, 0);
-              const percentage = currentMember.total_contributed > 0 
-                ? (typeTotal / currentMember.total_contributed) * 100 
+              const percentage = profile.total_contributed > 0
+                ? (typeTotal / profile.total_contributed) * 100
                 : 0;
-              
+
               if (typeTotal === 0) return null;
-              
+
               return (
                 <div key={type}>
                   <div className="flex items-center justify-between mb-2">

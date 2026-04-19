@@ -43,8 +43,8 @@ export function SignupPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
       return;
     }
 
@@ -53,6 +53,7 @@ export function SignupPage() {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
         email: formData.email,
+        password: formData.password,
         jumuia: JUMUIA_ENUM[formData.jumuia] ?? formData.jumuia,
         joinDate: formData.joinDate,
       });
@@ -160,7 +161,7 @@ export function SignupPage() {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 required
               />
             </div>

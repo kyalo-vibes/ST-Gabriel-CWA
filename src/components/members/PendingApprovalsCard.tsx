@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -19,26 +20,33 @@ import {
 
 export function PendingApprovalsCard() {
   const { members, updateMember, deleteMember } = useStore();
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const pendingMembers = members.filter(m => m.approvalStatus === 'Pending');
 
   const handleApprove = async (memberId: string, memberName: string) => {
+    setProcessingId(memberId);
     try {
       await membersApi.approve(memberId);
       updateMember(memberId, { approvalStatus: 'Approved', status: 'Active' });
       toast.success(`${memberName} has been approved!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve member');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleReject = async (memberId: string, memberName: string) => {
+    setProcessingId(memberId);
     try {
       await membersApi.remove(memberId);
       deleteMember(memberId);
       toast.info(`${memberName}'s application has been rejected.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reject application');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -92,6 +100,7 @@ export function PendingApprovalsCard() {
             <div className="flex gap-2 pt-2">
               <Button
                 size="sm"
+                disabled={processingId === member.id}
                 className="flex-1 bg-green-600 hover:bg-green-700"
                 onClick={() => handleApprove(member.id, member.name)}
               >
@@ -101,7 +110,7 @@ export function PendingApprovalsCard() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="flex-1">
+                  <Button size="sm" variant="destructive" disabled={processingId === member.id} className="flex-1">
                     <X className="h-4 w-4 mr-1" />
                     Reject
                   </Button>

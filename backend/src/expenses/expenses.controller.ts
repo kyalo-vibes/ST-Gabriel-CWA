@@ -9,7 +9,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class ExpensesController {
   constructor(private readonly expensesService: ExpensesService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Administrator')
   @Get()
   findAll() {
     return this.expensesService.findAll();
